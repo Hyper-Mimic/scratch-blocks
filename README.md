@@ -1,4 +1,4 @@
-# TurboWarp/scratch-blocks
+# HyperMimic/scratch-blocks
 
 ## Playgrounds
 
