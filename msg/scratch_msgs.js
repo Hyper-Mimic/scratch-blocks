@@ -22552,7 +22552,7 @@ Blockly.ScratchMsgs.locales["zh-cn"] =
     "OPERATORS_CONTAINS": "%1 包含 %2 ?",
     "OPERATORS_MOD": "%1 除以 %2 的余数",
     "OPERATORS_ROUND": "四舍五入 %1",
-    "OPERATORS_MATHOP": "%1 %2",
+    "OPERATORS_MATHOP": "%1​​ %2",
     "OPERATORS_MATHOP_ABS": "绝对值",
     "OPERATORS_MATHOP_FLOOR": "向下取整",
     "OPERATORS_MATHOP_CEILING": "向上取整",
