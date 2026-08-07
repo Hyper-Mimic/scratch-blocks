@@ -1,4 +1,4 @@
-# HyperMimic/scratch-blocks
+# Hyper-Mimic/scratch-blocks
 
 ## Playgrounds
 
