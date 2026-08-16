@@ -1,5 +1,5 @@
-*_compressed*.js
-*_uncompressed*.js
+# *_compressed*.js
+# *_uncompressed*.js
 /msg/*
 /core/css.js
 /i18n/*
