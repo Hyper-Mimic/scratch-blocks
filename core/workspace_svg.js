@@ -1194,20 +1194,12 @@ Blockly.WorkspaceSvg.prototype.pasteWorkspaceComment_ = function(xmlComment) {
   Blockly.Events.disable();
   try {
     var comment = Blockly.WorkspaceCommentSvg.fromXml(xmlComment, this);
-    // Move the duplicate to original position.
-    var commentX = parseInt(xmlComment.getAttribute('x'), 10);
-    var commentY = parseInt(xmlComment.getAttribute('y'), 10);
-    if (!isNaN(commentX) && !isNaN(commentY)) {
-      if (this.RTL) {
-        commentX = -commentX;
-      }
-      // Offset workspace comment.
-      // TODO: (github.com/google/blockly/issues/1719) properly offset comment
-      // such that it's not interfereing with any blocks
-      commentX += 50;
-      commentY += 50;
-      comment.moveBy(commentX, commentY);
-    }
+    // fromXml already positioned the comment at its original location
+    // (including RTL handling). Re-applying the stored x/y here would shift it
+    // by roughly double the original distance, so just nudge the duplicate by
+    // a fixed offset so it doesn't sit exactly on top of the original.
+    var offsetX = this.RTL ? -50 : 50;
+    comment.moveBy(offsetX, 50);
   } finally {
     Blockly.Events.enable();
   }
@@ -1446,19 +1438,35 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
     Blockly.WidgetDiv.hide(true);
     Blockly.DropDownDiv.hideWithoutAnimation();
 
-    var x = this.scrollX - e.deltaX * multiplier;
-    var y = this.scrollY - e.deltaY * multiplier;
-
-    if (e.shiftKey && e.deltaX === 0) {
-      // Scroll horizontally (based on vertical scroll delta)
-      // This is needed as for some browser/system combinations which do not
-      // set deltaX. See #1662.
-      x = this.scrollX - e.deltaY * multiplier;
-      y = this.scrollY; // Don't scroll vertically
+    // Coalesce wheel/trackpad events into one scroll per animation frame so
+    // high-frequency wheel storms don't thrash the scrollbar. (2026-08-28)
+    this.pendingScrollDeltaX_ = (this.pendingScrollDeltaX_ || 0) +
+        (e.deltaX * multiplier);
+    this.pendingScrollDeltaY_ = (this.pendingScrollDeltaY_ || 0) +
+        (e.deltaY * multiplier);
+    this.pendingScrollShift_ = e.shiftKey;
+    if (!this.wheelRafScheduled_) {
+      this.wheelRafScheduled_ = true;
+      var self = this;
+      requestAnimationFrame(function() {
+        self.wheelRafScheduled_ = false;
+        var dx = self.pendingScrollDeltaX_ || 0;
+        var dy = self.pendingScrollDeltaY_ || 0;
+        self.pendingScrollDeltaX_ = 0;
+        self.pendingScrollDeltaY_ = 0;
+        var scrollX = self.scrollX - dx;
+        var scrollY = self.scrollY - dy;
+        if (self.pendingScrollShift_ && dx === 0) {
+          // Scroll horizontally (based on vertical scroll delta)
+          // This is needed as for some browser/system combinations which do not
+          // set deltaX. See #1662.
+          scrollX = self.scrollX - dy;
+          scrollY = self.scrollY; // Don't scroll vertically
+        }
+        self.startDragMetrics = self.getMetrics();
+        self.scroll(scrollX, scrollY);
+      });
     }
-
-    this.startDragMetrics = this.getMetrics();
-    this.scroll(x, y);
   }
   e.preventDefault();
 };
@@ -1925,7 +1933,11 @@ Blockly.WorkspaceSvg.prototype.setScale = function(newScale) {
  * @param {number} y Target Y to scroll to
  */
 Blockly.WorkspaceSvg.prototype.scroll = function(x, y) {
-  var metrics = this.startDragMetrics; // Cached values
+  // Use LIVE metrics, not a cached startDragMetrics. The cached snapshot goes
+  // stale when content bounds change (e.g. a workspace comment is added or
+  // removed), which produced wrong clamping -> pan jump on first frame and
+  // incorrect zoom/centerOnBlock. (2026-08-28)
+  var metrics = this.getMetrics();
   x = Math.min(x, -metrics.contentLeft);
   y = Math.min(y, -metrics.contentTop);
   x = Math.max(x, metrics.viewWidth - metrics.contentLeft -

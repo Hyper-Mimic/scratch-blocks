@@ -71,6 +71,13 @@ Blockly.WorkspaceDragger = function(workspace) {
  */
 Blockly.WorkspaceDragger.prototype.dispose = function() {
   this.workspace_ = null;
+  // Cancel any coalesced drag frame so a disposed dragger can't fire later.
+  this.rafScheduled_ = false;
+  this.pendingDragDelta_ = null;
+  if (this.rafId_ && window.cancelAnimationFrame) {
+    window.cancelAnimationFrame(this.rafId_);
+  }
+  this.rafId_ = null;
 };
 
 /**
@@ -81,6 +88,31 @@ Blockly.WorkspaceDragger.prototype.startDrag = function() {
   if (Blockly.selected) {
     Blockly.selected.unselect();
   }
+  // Refresh the scrollbar ratio_ from the CURRENT content bounds before
+  // capturing the drag baseline. Deleting a workspace comment (or any content
+  // change) can alter contentWidth/contentHeight without a matching
+  // scrollbar.resize(), leaving ratio_ stale. A stale ratio_ makes
+  // scrollbar.set -> setMetrics a NON-identity round-trip, so the first pan
+  // frame computes the wrong scroll and the workspace jumps a little before
+  // tracking the pointer correctly. Recomputing ratio_ here keeps the drag
+  // math exact. (2026-08-28)
+  var scrollbar = this.workspace_.scrollbar;
+  if (scrollbar) {
+    var m = this.workspace_.getMetrics();
+    if (m) {
+      if (scrollbar.hScroll) {
+        var hr = scrollbar.hScroll.scrollViewSize_ / m.contentWidth;
+        scrollbar.hScroll.ratio_ = isNaN(hr) || !isFinite(hr) ? 0 : hr;
+      }
+      if (scrollbar.vScroll) {
+        var vr = scrollbar.vScroll.scrollViewSize_ / m.contentHeight;
+        scrollbar.vScroll.ratio_ = isNaN(vr) || !isFinite(vr) ? 0 : vr;
+      }
+    }
+  }
+  this.startDragMetrics_ = this.workspace_.getMetrics();
+  this.startScrollXY_ = new goog.math.Coordinate(
+      this.workspace_.scrollX, this.workspace_.scrollY);
   this.workspace_.setupDragSurface();
 };
 
@@ -91,8 +123,15 @@ Blockly.WorkspaceDragger.prototype.startDrag = function() {
  * @package
  */
 Blockly.WorkspaceDragger.prototype.endDrag = function(currentDragDeltaXY) {
-  // Make sure everything is up to date.
-  this.drag(currentDragDeltaXY);
+  // Apply the final position synchronously (flush any coalesced frame) so
+  // resetDragSurface sees the correct position. (2026-08-28)
+  this.pendingDragDelta_ = currentDragDeltaXY;
+  if (this.rafScheduled_ && this.rafId_ && window.cancelAnimationFrame) {
+    window.cancelAnimationFrame(this.rafId_);
+    this.rafId_ = null;
+    this.rafScheduled_ = false;
+  }
+  this.applyDrag_();
   this.workspace_.resetDragSurface();
 };
 
@@ -103,8 +142,31 @@ Blockly.WorkspaceDragger.prototype.endDrag = function(currentDragDeltaXY) {
  * @package
  */
 Blockly.WorkspaceDragger.prototype.drag = function(currentDragDeltaXY) {
+  // Coalesce pointer moves into one scroll per animation frame. (2026-08-28)
+  this.pendingDragDelta_ = currentDragDeltaXY;
+  if (!this.rafScheduled_) {
+    this.rafScheduled_ = true;
+    var self = this;
+    this.rafId_ = requestAnimationFrame(function() {
+      self.rafScheduled_ = false;
+      self.rafId_ = null;
+      self.applyDrag_();
+    });
+  }
+};
+
+/**
+ * Apply the coalesced drag delta to the scrollbars. Separated from drag() so the
+ * pending frame (and endDrag's synchronous flush) share one code path.
+ * @private
+ */
+Blockly.WorkspaceDragger.prototype.applyDrag_ = function() {
   var metrics = this.startDragMetrics_;
-  var newXY = goog.math.Coordinate.sum(this.startScrollXY_, currentDragDeltaXY);
+  if (!metrics || !this.workspace_) {
+    return;
+  }
+  var newXY = goog.math.Coordinate.sum(this.startScrollXY_,
+      this.pendingDragDelta_);
 
   // Bound the new XY based on workspace bounds.
   var x = Math.min(newXY.x, -metrics.contentLeft);

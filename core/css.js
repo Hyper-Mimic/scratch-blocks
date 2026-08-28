@@ -828,7 +828,7 @@ Blockly.Css.CONTENT = [
   '}',
 
   '.blocklyContextMenu {',
-    'border-radius: 4px;',
+    'border-radius: 10px;',
     'max-height: 100%;',
   '}',
 
@@ -1033,6 +1033,7 @@ Blockly.Css.CONTENT = [
    */
 
   '.blocklyWidgetDiv .goog-menu {',
+    'box-shadow: 0px 0px 5px 1px rgba(0, 0, 0, 0.2);',
     'background: $colour_contextMenuBackground;',
     'border-color: $colour_contextMenuBorder;',
     'color: $colour_contextMenuForeground;',
@@ -1042,7 +1043,7 @@ Blockly.Css.CONTENT = [
     'font: normal 13px "Helvetica Neue", Helvetica, sans-serif;',
     'margin: 0;',
     'outline: none;',
-    'padding: 4px 0;',
+    'padding: 7px 0;',
     'position: absolute;',
     'overflow-y: auto;',
     'overflow-x: hidden;',
@@ -1090,7 +1091,7 @@ Blockly.Css.CONTENT = [
     'list-style: none;',
     'margin: 0;',
      /* 28px on the left for icon or checkbox; 7em on the right for shortcut. */
-    'padding: 4px 7em 4px 28px;',
+    'padding: 7px 7em 7px 28px;',
     'white-space: nowrap;',
   '}',
 
@@ -1102,7 +1103,7 @@ Blockly.Css.CONTENT = [
     'margin: 0;',
     'min-height: 24px;',
      /* 28px on the left for icon or checkbox; 7em on the right for shortcut. */
-    'padding: 4px 7em 4px 28px;',
+    'padding: 7px 7em 7px 28px;',
     'white-space: nowrap;',
   '}',
 
@@ -1162,8 +1163,8 @@ Blockly.Css.CONTENT = [
     'border-color: $colour_contextMenuActiveBackground;',
     'border-style: dotted;',
     'border-width: 1px 0;',
-    'padding-bottom: 3px;',
-    'padding-top: 3px;',
+    'padding-bottom: 6px;',
+    'padding-top: 6px;',
   '}',
 
   '.blocklyDropDownDiv .goog-menuitem-highlight,',
