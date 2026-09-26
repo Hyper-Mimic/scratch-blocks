@@ -699,21 +699,6 @@ Blockly.WorkspaceSvg.prototype.queueIntersectionCheck = function() {
 };
 
 /**
- * Apply the GUI's culling toggle. Flips the global flag the patched setIntersects
- * and queueIntersectionCheck read, re-inserts every detached block when turning
- * off (so they go back to the display:none path), and asks the observer to
- * recompute on the next check.
- * @param {boolean} enabled
- */
-Blockly.WorkspaceSvg.prototype.hmApplyBlockCulling = function(enabled) {
-  window.__hmBlockCulling = !!enabled;
-  if (!enabled) {
-    Blockly.BlockSvg.hmReattachAll(this);
-  }
-  this.queueIntersectionCheck();
-};
-
-/**
  * Call *before* modifying scripts.
  */
 Blockly.WorkspaceSvg.prototype.procedureReturnsWillChange = function() {
