@@ -36,7 +36,6 @@ goog.require('Blockly.utils');
 goog.require('Blockly.utils.uiMenu');
 
 goog.require('goog.dom');
-goog.require('goog.dom.classlist');
 goog.require('goog.events');
 goog.require('goog.style');
 goog.require('goog.ui.Menu');
@@ -58,41 +57,13 @@ Blockly.ContextMenu.currentBlock = null;
 Blockly.ContextMenu.eventWrapper_ = null;
 
 /**
- * How long the menu takes to fade in or out, in milliseconds.
- * Must match the `transition` on `.blocklyContextMenu` in css.js.
- * @const {number}
- */
-Blockly.ContextMenu.ANIMATION_MS = 200;
-
-/**
- * The CSS class that drives the menu's opacity to 0 (see css.js).
- * @const {string}
- */
-Blockly.ContextMenu.FADING_CLASS = 'hm-block-menu-fading';
-
-/**
  * Construct the menu based on the list of options and show the menu.
  * @param {!Event} e Mouse event.
  * @param {!Array.<!Object>} options Array of menu options.
  * @param {boolean} rtl True if RTL, false if LTR.
  */
 Blockly.ContextMenu.show = function(e, options, rtl) {
-  Blockly.WidgetDiv.show(
-      Blockly.ContextMenu, rtl,
-      // Dispose animation: run when a hide starts. This is what fades the menu out; the
-      // WidgetDiv keeps it rendered until the timer below is up.
-      function() {
-        var fading = Blockly.WidgetDiv.DIV &&
-            Blockly.WidgetDiv.DIV.firstChild;
-        if (fading) {
-          goog.dom.classlist.add(fading, Blockly.ContextMenu.FADING_CLASS);
-        }
-      },
-      // Dispose animation finished: nothing to release -- the menu element goes away with the
-      // rest of the WidgetDiv's children.
-      function() {},
-      // Timer length, in seconds.
-      Blockly.ContextMenu.ANIMATION_MS / 1000);
+  Blockly.WidgetDiv.show(Blockly.ContextMenu, rtl, null);
   if (!options.length) {
     Blockly.ContextMenu.hide();
     return;
@@ -107,23 +78,6 @@ Blockly.ContextMenu.show = function(e, options, rtl) {
   // mouse event is still waiting in the queue and clears focus.
   setTimeout(function() {menu.getElement().focus();}, 1);
   Blockly.ContextMenu.currentBlock = null;  // May be set by Blockly.Block.
-
-  // Fade in. The menu is already rendered at this point, so unlike a `display`-driven element
-  // there is no "before-change style" for the browser to start the transition from (that is
-  // what `@starting-style` is for). Adding the fading class puts it back at opacity 0 in this
-  // frame and the next frame lets it go, which gives the browser the two styles it needs to
-  // interpolate between.
-  var menuDom = menu.getElement();
-  if (menuDom) {
-    goog.dom.classlist.add(menuDom, Blockly.ContextMenu.FADING_CLASS);
-    requestAnimationFrame(function() {
-      // The menu can be hidden or replaced within that frame; a detached element needs no
-      // releasing, and touching one would only keep a dead node alive.
-      if (menuDom.parentNode) {
-        goog.dom.classlist.remove(menuDom, Blockly.ContextMenu.FADING_CLASS);
-      }
-    });
-  }
 };
 
 /**

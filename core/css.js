@@ -830,21 +830,6 @@ Blockly.Css.CONTENT = [
   '.blocklyContextMenu {',
     'border-radius: 10px;',
     'max-height: 100%;',
-    // Open/close animation. The menu is shown and hidden by toggling `display` on the
-    // WidgetDiv (see widgetdiv.js), and `display` cannot be transitioned here, so the fade is
-    // driven from Blockly's own dispose-animation hooks in contextmenu.js instead: on open the
-    // menu is put back at opacity 0 and released on the next frame, on close the fade runs
-    // while the WidgetDiv waits out its dispose timer before clearing the DOM.
-    //
-    // `opacity: 1` is written out rather than left implied so both ends of the transition are
-    // interpolable -- a transition to/from an unset value does not animate.
-    'opacity: 1;',
-    'transition: opacity 200ms ease;',
-  '}',
-
-  // Applied by contextmenu.js for the first frame of the open, and for the whole of the close.
-  '.blocklyContextMenu.hm-block-menu-fading {',
-    'opacity: 0;',
   '}',
 
   '.blocklyDropdownMenu {',
