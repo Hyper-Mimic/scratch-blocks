@@ -74,8 +74,36 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   // Allow blocks to go slightly offscreen so that effects such as glow do not get cut off.
   var margin = 12 * workspaceScale;
 
+  // PATCH 8 GUARD (2026-09-26): never cull the block that is currently being
+  // dragged.
+  //
+  // PATCH 8 makes this check run once per animation frame while a block drag is
+  // in progress, so the culling around the dragged stack stays correct on very
+  // large workspaces. But the check measures positions against the *workspace
+  // viewport*, and the user can legitimately drag a block outside that viewport
+  // -- e.g. up over the backpack / sprite panes, which sit beside the workspace
+  // column. The dragged block would then be judged off-screen and get
+  // display:none, so it vanished from under the cursor until it came back
+  // inside.
+  //
+  // The dragged block lives on the block drag surface while the drag is in
+  // flight; getCurrentBlock() returns dragGroup_.firstChild, which is the node
+  // passed to setBlocksAndShow(getSvgRoot()), i.e. the same node
+  // block.getSvgRoot() returns. Comparing against it skips exactly the dragged
+  // block and leaves every other block's culling untouched.
+  var draggedNode = null;
+  var blockDragSurface = workspace.blockDragSurface_;
+  if (blockDragSurface && typeof blockDragSurface.getCurrentBlock === 'function') {
+    draggedNode = blockDragSurface.getCurrentBlock() || null;
+  }
+
   for (var i = 0; i < this.observing.length; i++) {
     var block = this.observing[i];
+    if (draggedNode && block.getSvgRoot() === draggedNode) {
+      // Force it visible in case an earlier frame hid it before this guard existed.
+      block.setIntersects(true);
+      continue;
+    }
     var blockPos = block.getRelativeToSurfaceXY();
     var blockSize = null;
     if (RTL) {
