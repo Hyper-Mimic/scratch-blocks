@@ -286,34 +286,8 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
     return;
   }
   this.intersects_ = intersects;
-  // PATCH 8 (2026-09-26, Step 2): with the culling flag on, detach the block's
-  // <g> from the DOM instead of toggling display:none. Detached nodes leave
-  // the browser's style/layout/hit-test trees, so per-frame work no longer
-  // scales with the total block count. With the flag off the path below is
-  // the original byte-for-byte.
   var root = this.getSvgRoot();
   if (!root) {
-    return;
-  }
-  if (window.__hmBlockCulling) {
-    if (intersects) {
-      // Reinsert at the original z-position if we previously detached.
-      var parent = this.hmDetachedParent_;
-      this.hmDetachedParent_ = null;
-      if (parent && !root.parentNode) {
-        Blockly.BlockSvg.hmReinsertIntoGroup_(parent, root);
-      }
-    } else {
-      // Skip detach while the block is being dragged: getRelativeToSurfaceXY
-      // walks parentNode, so a detached node drops the canvas translate and
-      // the block teleports. The drag surface itself is moved wholesale, so
-      // the block still renders correctly during drag.
-      if (root.classList && root.classList.contains('blocklyDragging')) return;
-      if (this.workspace && this.workspace.isDragging && this.workspace.isDragging()) return;
-      if (!root.parentNode) return;
-      this.hmDetachedParent_ = root.parentNode;
-      root.parentNode.removeChild(root);
-    }
     return;
   }
   if (intersects) {
@@ -321,33 +295,6 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
   } else {
     root.style.display = 'none';
   }
-};
-
-/**
- * Reinsert a detached <g> into the parent we recorded at detach time. Kept as
- * a static helper so hmApplyBlockCulling can call it during a workspace-wide
- * re-attach.
- */
-Blockly.BlockSvg.hmReinsertIntoGroup_ = function(parent, root) {
-  parent.appendChild(root);
-};
-
-/**
- * Re-attach every detached block in the workspace. Called by
- * hmApplyBlockCulling(false) so a toggled-off switch restores the display:none
- * path on the same frame.
- */
-Blockly.BlockSvg.hmReattachAll = function(workspace) {
-  if (!workspace || !workspace.intersectionObserver) return;
-  var observing = workspace.intersectionObserver.observing || [];
-  observing.forEach(function(block) {
-    if (block.hmDetachedParent_) {
-      block.hmDetachedParent_ = null;
-      if (block.getSvgRoot() && block.workspace) {
-        block.setIntersects(true);
-      }
-    }
-  });
 };
 
 Blockly.BlockSvg.prototype.updateIntersectionObserver = function() {
@@ -358,24 +305,8 @@ Blockly.BlockSvg.prototype.updateIntersectionObserver = function() {
         this.setIntersects(true);
       }
     } else {
-      // PATCH 8 (Step 2): a previously-detached block becoming a top-level
-      // block would never be re-observed (the original observe() branch never
-      // called setIntersects(true)), so it would stay invisible forever.
-      // hmReattachIfDetached restores it before observe() takes over.
-      this.hmReattachIfDetached();
       this.workspace.intersectionObserver.observe(this);
     }
-  }
-};
-
-/**
- * Reinsert this block if it was detached. Called from updateIntersectionObserver
- * on the observe() branch so an orphan detached block (parent removed while
- * off-screen) is restored before being re-observed.
- */
-Blockly.BlockSvg.prototype.hmReattachIfDetached = function() {
-  if (this.hmDetachedParent_) {
-    this.setIntersects(true);
   }
 };
 

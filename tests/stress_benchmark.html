@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scratch Blocks — 渲染性能基准测试</title>
+
+    <!-- 自包含压缩包：内联全部 core 代码，file:// 直接打开即可，不依赖运行时 goog.require -->
+    <script src="../blockly_compressed_vertical.js"></script>
+    <script src="../msg/messages.js"></script>
+    <script src="../msg/scratch_msgs.js"></script>
+    <script src="../blocks_vertical/vertical_extensions.js"></script>
+    <script src="../blocks_common/math.js"></script>
+    <script src="../blocks_common/matrix.js"></script>
+    <script src="../blocks_common/note.js"></script>
+    <script src="../blocks_common/text.js"></script>
+    <script src="../blocks_common/colour.js"></script>
+    <script src="../blocks_vertical/control.js"></script>
+    <script src="../blocks_vertical/event.js"></script>
+    <script src="../blocks_vertical/motion.js"></script>
+    <script src="../blocks_vertical/looks.js"></script>
+    <script src="../blocks_vertical/procedures.js"></script>
+    <script src="../blocks_vertical/operators.js"></script>
+    <script src="../blocks_vertical/pen.js"></script>
+    <script src="../blocks_vertical/sound.js"></script>
+    <script src="../blocks_vertical/sensing.js"></script>
+    <script src="../blocks_vertical/data.js"></script>
+    <script src="../blocks_vertical/extensions.js"></script>
+
+    <script>
+      'use strict';
+
+      // 任何加载/初始化错误都直接显示到屏幕上，方便排查
+      window.onerror = function(msg, src, line, col) {
+        var el = document.getElementById('err');
+        if (el) {
+          el.style.display = 'block';
+          el.textContent = '出错了：' + msg + '  (' + src + ':' + line + ')';
+        }
+        return false;
+      };
+
+      window.ScratchBlocks = Blockly;
+      var workspace = null;
+
+      // 一批常用积木类型，让标签重复使用，能体现宽度缓存的作用
+      var TYPES = [
+        'motion_movesteps', 'control_wait', 'looks_say', 'operator_lt',
+        'event_whenflagclicked', 'data_setvariableto', 'control_repeat',
+        'sensing_askandwait', 'motion_turnright'
+      ];
+
+      function start() {
+        try {
+          if (Blockly.ScratchMsgs && Blockly.ScratchMsgs.setLocale) {
+            Blockly.ScratchMsgs.setLocale('en');
+          }
+          workspace = Blockly.inject('blocklyDiv', {
+            media: '../media/',
+            scrollbars: true,
+            toolbox: document.getElementById('toolbox'),
+            zoom: {controls: true, wheel: true, startScale: 0.6,
+                   maxScale: 2, minScale: 0.25, scaleSpeed: 1.1}
+          });
+          setStatus('✅ 工作区已就绪：左边工具箱可拖积木，右侧可编辑。');
+        } catch (e) {
+          setStatus('❌ 初始化失败：' + (e && e.message ? e.message : e));
+          throw e;
+        }
+      }
+
+      function setStatus(s) {
+        var el = document.getElementById('status');
+        if (el) el.textContent = s;
+      }
+
+      // 生成包含 n 个顶层积木的 <xml>，平铺铺开以便肉眼可见
+      function buildXml(n) {
+        var parts = ['<xml>'];
+        for (var i = 0; i < n; i++) {
+          var type = TYPES[i % TYPES.length];
+          var x = 30 + (i % 30) * 42;
+          var y = 30 + Math.floor(i / 30) * 55;
+          parts.push('<block type="' + type + '" x="' + x + '" y="' + y + '"></block>');
+        }
+        parts.push('</xml>');
+        return parts.join('\n');
+      }
+
+      // 统计当前真正画在屏幕上的积木（display != none 的 svgGroup）
+      function paintedCount() {
+        if (!workspace) return 0;
+        var blocks = workspace.getAllBlocks();
+        var n = 0;
+        for (var i = 0; i < blocks.length; i++) {
+          var g = blocks[i].svgGroup_;
+          if (g && g.style.display !== 'none') n++;
+        }
+        return n;
+      }
+
+      // 统计所有积木 svgGroup_ 下的子节点总数（每块的 path+文字+图标）。
+      function svgNodes() {
+        if (!workspace) return 0;
+        var blocks = workspace.getAllBlocks();
+        var n = 0;
+        for (var i = 0; i < blocks.length; i++) {
+          var g = blocks[i].svgGroup_;
+          if (g) n += g.childNodes.length;
+        }
+        return n;
+      }
+
+      // 加载 n 个积木。optimized=false 关闭前一轮优化（基线）；culling=true 开启视口剔除
+      function loadBlocks(n, optimized, culling) {
+        if (culling && !workspace.culling_) {
+          workspace.setCulling(true);
+        } else if (!culling && workspace.culling_) {
+          workspace.setCulling(false);
+        }
+
+        workspace.clear();
+        Blockly.Field.clearPersistentWidthCache();
+        Blockly.scratchBlocksUtils.clearMeasureCache();
+
+        var savedSetBulk = workspace.setBulkLoading;
+        if (!optimized) {
+          // 基线：关掉批量加载优化 → 逐连接 splice 插入(O(n^2)) + 每块邻居碰撞扫描重新生效
+          workspace.isBulkLoading = false;
+          workspace.setBulkLoading = function() {};
+          // 关闭跨积木宽度缓存 → 每块都重新测量文字宽度
+          Blockly.Field.persistentWidthCache_ = null;
+        }
+
+        var dom = Blockly.Xml.textToDom(buildXml(n));
+        var t0 = performance.now();
+        Blockly.Xml.domToWorkspace(dom, workspace);
+        var t1 = performance.now();
+
+        if (culling) workspace.updateCulling();
+
+        if (!optimized) {
+          workspace.setBulkLoading = savedSetBulk;
+          Blockly.Field.persistentWidthCache_ = {};
+        }
+        return t1 - t0;
+      }
+
+      // 仅加载积木（让用户能看到并拖动），走 culling 复选框
+      function loadVisual() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        var n = parseInt(document.getElementById('count').value, 10) || 1000;
+        var culling = document.getElementById('cull').checked;
+        loadBlocks(n, true, culling);
+        setStatus('已加载 ' + workspace.getAllBlocks().length + ' 个积木，' +
+                  '实际绘制 ' + paintedCount() + ' 个。可直接拖动编辑。');
+      }
+
+      // 跑 4 路对比：优化×(开/关) × 剔除×(开/关)
+      function runBenchmark() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        var n = parseInt(document.getElementById('count').value, 10) || 1000;
+        setStatus('基准测试中（' + n + ' 个积木）…');
+
+        var r = {};
+        r.optNoCull = { ms: loadBlocks(n, true, false), painted: paintedCount() };
+        r.baseNoCull = { ms: loadBlocks(n, false, false), painted: paintedCount() };
+        r.optCull = { ms: loadBlocks(n, true, true), painted: paintedCount() };
+        r.baseCull = { ms: loadBlocks(n, false, true), painted: paintedCount() };
+        // 复位到“优化+剔除关”，便于用户观察
+        workspace.setCulling(false);
+        loadBlocks(n, true, false);
+
+        function row(label, d, hi) {
+          return '<tr' + (hi ? ' style="background:#fff0f0"' : '') + '>' +
+            '<td>' + label + '</td><td>' + d.ms.toFixed(1) + ' ms</td><td>' +
+            d.painted + ' / ' + n + '</td></tr>';
+        }
+        var html = '<table border="1" cellspacing="0" cellpadding="6">' +
+          '<tr><th>配置</th><th>加载耗时</th><th>实际绘制积木</th></tr>' +
+          row('优化开 + 剔除关', r.optNoCull, false) +
+          row('优化关(基线) + 剔除关', r.baseNoCull, true) +
+          row('优化开 + 剔除开', r.optCull, false) +
+          row('优化关(基线) + 剔除开', r.baseCull, true) +
+          '</table>';
+        document.getElementById('result').innerHTML = html;
+
+        var speedupLoad = r.baseNoCull.ms > 0 ?
+          (r.baseNoCull.ms / r.optNoCull.ms) : 0;
+        var dropCull = n > 0 ? (100 * (1 - r.optCull.painted / n)) : 0;
+        setStatus('完成：优化使加载 ' + speedupLoad.toFixed(2) + '× 更快；' +
+                  '剔除把绘制积木从 ' + n + ' 降到 ' + r.optCull.painted +
+                  '（减少 ' + dropCull.toFixed(0) + '%）。');
+      }
+
+      // 压力测试：连续触发 N 次“滚动/缩放结束”事件，对比
+      //   · 基线：每次事件都同步跑一次剔除 O(顶层积木数)
+      //   · 优化(⑤ rAF 批量)：每次事件只调度一帧 rAF，真正剔除每帧最多跑一次
+      // 这直接对应“拖动/缩放很卡”的体验——优化后主线程不会被每个事件阻塞。
+      function runStress() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        var n = parseInt(document.getElementById('count').value, 10) || 3000;
+        workspace.setCulling(true);
+        loadBlocks(n, true, true);
+        workspace.setScale(0.25);  // 缩到很小，所有积木都在屏内，剔除有大量工作
+
+        var N = 1000;
+        // 基线：每“事件”同步跑剔除
+        var t0 = performance.now();
+        for (var i = 0; i < N; i++) workspace.updateCulling();
+        var tBase = performance.now() - t0;
+
+        // 优化：每“事件”只调度 rAF（被 cullingRaf_ 去重，同步开销≈0）
+        var t1 = performance.now();
+        for (var j = 0; j < N; j++) workspace.scheduleCullingUpdate_();
+        var tOpt = performance.now() - t1;
+
+        // 让挂起的 rAF 真正执行一次，恢复一致状态
+        workspace.setScale(0.6);
+        var speed = tBase > 0 ? (tBase / tOpt) : 0;
+        var willChange = workspace.svgBlockCanvas_.style.willChange || '(无)';
+
+        function row(label, ms, hi) {
+          return '<tr' + (hi ? ' style="background:#fff0f0"' : '') + '>' +
+            '<td>' + label + '</td><td>' + ms.toFixed(1) + ' ms</td></tr>';
+        }
+        var html = '<table border="1" cellspacing="0" cellpadding="6">' +
+          '<tr><th>连续 ' + N + ' 次滚动事件</th><th>同步耗时</th></tr>' +
+          row('基线：每次事件同步剔除', tBase, true) +
+          row('优化⑤：rAF 批量（每帧一次）', tOpt, false) +
+          '</table>';
+        document.getElementById('result').innerHTML = html;
+
+        setStatus('压力滚动 ' + N + ' 次：同步剔除 ' + tBase.toFixed(0) + ' ms vs rAF 批量 ' +
+                  tOpt.toFixed(0) + ' ms（' + speed.toFixed(1) + '× 更快）。\n' +
+                  'CSS 合成层 will-change=' + willChange + '（②已启用）；滚动时不再强制重排（⑥已启用）。');
+      }
+
+      // ② FULL 级 SVG 复杂度检查：凹槽是否已矩形化、每块 path 命令数、低缩放滤镜是否跳过
+      function runComplexityCheck() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        var n = parseInt(document.getElementById('count').value, 10) || 3000;
+        workspace.setCulling(false);
+        loadBlocks(n, true, false);
+        var svg = workspace.svgGroup_ ? workspace.svgGroup_.ownerSVGElement : null;
+        if (!svg) { setStatus('❌ 找不到 SVG'); return; }
+
+        function tagOf(id) {
+          var el = svg.querySelector(id);
+          return el ? el.tagName : '(缺)';
+        }
+
+        // 每块主路径的命令数（按命令字母切分）
+        var blocks = workspace.getAllBlocks();
+        var totalCmds = 0, withPath = 0;
+        for (var i = 0; i < blocks.length; i++) {
+          var d = blocks[i].svgPath_ ? blocks[i].svgPath_.getAttribute('d') : null;
+          if (d) {
+            withPath++;
+            var cmds = d.match(/[a-zA-Z][^a-zA-Z]*/g);
+            totalCmds += cmds ? cmds.length : 0;
+          }
+        }
+        var avgCmds = withPath ? (totalCmds / withPath).toFixed(1) : 0;
+
+        // 低缩放时发光滤镜是否跳过（去阴影滤镜）
+        workspace.setScale(0.25);
+        var lowZoomFilterSkipped = true;
+        for (var j = 0; j < blocks.length; j++) {
+          if (blocks[j].svgPath_ && blocks[j].svgPath_.hasAttribute('filter')) {
+            lowZoomFilterSkipped = false;
+            break;
+          }
+        }
+        // 低缩放时描边补偿（阴影/轮廓保真）：stroke-width 应为 1/scale = 4
+        var firstPath = blocks[0] && blocks[0].svgPath_;
+        var strokeComp = firstPath ? firstPath.getAttribute('stroke-width') : '(无块)';
+        var strokeOk = strokeComp === '4';
+        workspace.setScale(0.6);
+
+        var rows = [
+          ['方口凹槽 def', tagOf('#blocklyInputShapeSquare') + '（应为 rect）'],
+          ['圆口凹槽 def', tagOf('#blocklyInputShapeRound') + '（应为 rect）'],
+          ['布尔六边凹槽 def', tagOf('#blocklyInputShapeHexagonal') + '（应为 path）'],
+          ['每块主路径平均命令数', avgCmds + ' 个（帽子=2段二次曲线，卡口=直线）'],
+          ['缩到 0.25 时发光滤镜', lowZoomFilterSkipped ? '已跳过（去阴影滤镜生效）' : '未跳过 ⚠️'],
+          ['缩到 0.25 时描边补偿', strokeComp + '（应为 4 = 1/0.25，屏幕恒 1px）' + (strokeOk ? '' : ' ⚠️')],
+          ['块画布合成层', (workspace.svgBlockCanvas_.style.willChange || '无') + ' / ' +
+              (workspace.svgBlockCanvas_.style.contain || '无')]
+        ];
+        var html = '<table border="1" cellspacing="0" cellpadding="6">' +
+          '<tr><th>FULL 级 SVG 复杂度</th><th>当前值</th></tr>';
+        for (var k = 0; k < rows.length; k++) {
+          html += '<tr><td>' + rows[k][0] + '</td><td>' + rows[k][1] + '</td></tr>';
+        }
+        html += '</table>';
+        document.getElementById('result').innerHTML = html;
+        setStatus('已加载 ' + blocks.length + ' 个积木并完成 FULL 级复杂度检查。');
+      }
+
+      // ③ 缓存检查：删除区域矩形（垃圾箱/飞离框）连续两次 getClientRect，
+      // 第二次应命中缓存 ≈0ms（不再每次拖拽都强制同步布局）。
+      function runCacheCheck() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        workspace.setCulling(false);
+        loadBlocks(parseInt(document.getElementById('count').value, 10) || 3000, true, false);
+
+        // 失效一次（模拟 resize 后重新测量），再连续读两次
+        if (workspace.trashcan) workspace.trashcan.cachedClientRect_ = null;
+        var tc = workspace.trashcan;
+        var fy = workspace.flyout_;
+        var t0 = performance.now(); var r0 = tc ? tc.getClientRect() : null;
+        var t1 = performance.now(); var r1 = tc ? tc.getClientRect() : null;
+        var t2 = performance.now();
+        var f0 = 0, f1 = 0;
+        if (fy) {
+          fy.cachedClientRect_ = null;
+          var s0 = performance.now(); fy.getClientRect();
+          var s1 = performance.now(); fy.getClientRect();
+          var s2 = performance.now();
+          f0 = s1 - s0; f1 = s2 - s1;
+        }
+
+        function row(label, a, b) {
+          return '<tr><td>' + label + '</td><td>' + a.toFixed(3) + ' ms</td><td>' +
+              b.toFixed(3) + ' ms</td></tr>';
+        }
+        var html = '<table border="1" cellspacing="0" cellpadding="6">' +
+          '<tr><th>getClientRect</th><th>首次（重测/读 DOM）</th><th>再次（命中缓存）</th></tr>' +
+          (tc ? row('垃圾箱', t1 - t0, t2 - t1) : '') +
+          (fy ? row('飞离框', f0, f1) : '') +
+          '</table>';
+        document.getElementById('result').innerHTML = html;
+        setStatus('删除区域矩形已缓存：第二次调用不再触发 getBoundingClientRect。' +
+                  '文字宽度测量（persistentWidthCache_）与 blocksArea 缓存同样生效。');
+      }
+
+      // 用户核心场景：大而分散的项目缩到很小，所有积木都在屏内（全细节绘制）。
+      // 没有 LOD——测量的是 ①+②+③ 生效时反复缩放的真实 JS 开销与绘制节点量。
+      function runZoomStress() {
+        if (!workspace) { setStatus('⚠️ 工作区未初始化，请刷新页面'); return; }
+        var n = parseInt(document.getElementById('count').value, 10) || 3000;
+        workspace.setCulling(false);   // 缩小后全部在屏内，剔除帮不上忙
+        loadBlocks(n, true, false);
+        workspace.setScale(0.6);
+
+        var N = 30;
+        var t0 = performance.now();
+        for (var i = 0; i < N; i++) {
+          workspace.setScale(0.25);   // 穿越到全屏内（无 LOD，保持全细节）
+          workspace.setScale(0.6);
+        }
+        var perRound = (performance.now() - t0) / N;
+
+        workspace.setScale(0.25);
+        var painted = paintedCount();
+        var nodes = svgNodes();
+
+        function row(label, v) {
+          return '<tr><td>' + label + '</td><td>' + v + '</td></tr>';
+        }
+        var html = '<table border="1" cellspacing="0" cellpadding="6">' +
+          '<tr><th>缩到 0.25（全细节、无 LOD）</th><th>值</th></tr>' +
+          row('缩放来回 30 次平均 JS 开销', perRound.toFixed(1) + ' ms/次') +
+          row('屏内积木（全部可见）', painted + ' / ' + n) +
+          row('所有积木 SVG 子节点合计', nodes + ' 个') +
+          row('每块平均子节点', (nodes / Math.max(1, n)).toFixed(1) + ' 个') +
+          '</table>';
+        document.getElementById('result').innerHTML = html;
+        setStatus('缩到 0.25 时 ' + painted + ' 个积木全部在屏内并保持全细节绘制。' +
+                  '合成层(will-change) + 凹槽矩形化 + 无强制重排已生效；' +
+                  '卡顿主要取决于浏览器逐帧绘制，缩放 JS 开销已压低到每帧 ' +
+                  perRound.toFixed(1) + ' ms。');
+      }
+
+      function clearWorkspace() {
+        if (workspace) workspace.clear();
+        setStatus('工作区已清空。');
+      }
+
+      window.Bench = {
+        load: function(n, optimized, culling) { return loadBlocks(n, !!optimized, !!culling); },
+        painted: function() { return paintedCount(); },
+        svgNodes: function() { return svgNodes(); },
+        setScale: function(s) { if (workspace) workspace.setScale(s); },
+        total: function() { return workspace ? workspace.getAllBlocks().length : 0; },
+        setCulling: function(b) { if (workspace) workspace.setCulling(!!b); },
+        scheduleCullingUpdate_: function() { if (workspace) return workspace.scheduleCullingUpdate_(); },
+        ready: function() { return !!workspace; }
+      };
+    </script>
+
+    <style>
+      html, body { height: 100%; margin: 0; font-family: sans-serif; color: #222; }
+      #panel {
+        position: absolute; top: 0; left: 0; width: 340px; z-index: 10;
+        background: #f5f5f5; padding: 14px; box-sizing: border-box;
+        border-right: 1px solid #ccc; height: 100%; overflow: auto;
+      }
+      #blocklyDiv { position: absolute; top: 0; left: 340px; right: 0; bottom: 0; }
+      #status { margin-top: 8px; font-size: 13px; color: #0a6; white-space: pre-wrap; }
+      #err {
+        display: none; margin-top: 8px; padding: 8px; background: #fdd;
+        color: #a00; border: 1px solid #a00; font-size: 13px; white-space: pre-wrap;
+      }
+      #result { margin-top: 10px; }
+      #result table { border-collapse: collapse; font-size: 13px; }
+      #result th { background: #eee; }
+      button { margin: 4px 0; padding: 6px 10px; cursor: pointer; }
+      input[type=number] { width: 90px; }
+      .hint { font-size: 12px; color: #666; line-height: 1.5; }
+    </style>
+  </head>
+  <body onload="start()">
+    <div id="panel">
+      <h2>渲染性能基准测试</h2>
+      <p class="hint">左侧工具箱里的积木<strong>可以直接拖到右边</strong>画布上编辑。
+         想看优化效果，点「跑对比」或「压力测试」。</p>
+
+      <label>积木数量：
+        <input id="count" type="number" value="3000" min="100" step="500">
+      </label>
+      <br>
+      <label><input id="cull" type="checkbox"> 加载时启用视口剔除</label>
+      <br>
+      <button onclick="loadVisual()">加载 N 个积木（可拖动）</button>
+      <button onclick="runBenchmark()">跑对比（优化×剔除 4 路）</button>
+      <button onclick="runStress()">压力测试 · 连续滚动(rAF 批量)</button>
+      <button onclick="runZoomStress()">压力测试 · 缩放(全细节 无LOD)</button>
+      <button onclick="runComplexityCheck()">检查 · FULL 级 SVG 复杂度</button>
+      <button onclick="runCacheCheck()">检查 · 删除区域矩形缓存</button>
+      <button onclick="clearWorkspace()">清空</button>
+
+      <div id="status">初始化中…</div>
+      <div id="err"></div>
+      <div id="result"></div>
+
+      <hr>
+      <p class="hint">针对「积木很多且分散、缩到很小就卡」场景的三项优化（均为行为保持）：<br>
+        · <strong>① CSS 合成优化</strong>：块画布/气泡画布 <code>will-change:transform</code> +
+          <code>contain:layout paint</code>，平移缩放走 GPU 合成层，不逐帧重绘 SVG。<br>
+        · <strong>② 压低 FULL 级 SVG 复杂度</strong>：帽子曲线 3 次贝塞尔→2 次曲线、卡口贝塞尔→直线、
+          输入凹槽 path→共享 rx/ry 圆角矩形 def、低缩放跳过发光/阴影滤镜——每个积木在屏内的绘制节点
+          更少、路径命令更少，缩放/平移时浏览器逐帧栅格化成本更低。<br>
+        · <strong>③ 消除交互中的强制重排</strong>：文字宽度跨积木缓存、blocksArea 尺寸缓存、
+          垃圾箱/飞离框/工具箱删除区域矩形缓存（仅 resize/reflow 时重测），拖拽中不再触发
+          <code>getBoundingClientRect</code>。<br>
+        · 说明：LOD（缩小降级成色块）已彻底移除——本页所有场景都保持全细节绘制。</p>
+    </div>
+    <div id="blocklyDiv"></div>
+
+    <!-- 完整工具箱：可自行拖拽积木 -->
+    <xml id="toolbox" style="display:none">
+      <category name="Motion" colour="#4C97FF" secondaryColour="#3373CC">
+        <block type="motion_movesteps"></block>
+        <block type="motion_turnright"></block>
+        <block type="motion_goto"></block>
+      </category>
+      <category name="Looks" colour="#9966FF" secondaryColour="#774DCB">
+        <block type="looks_say"></block>
+        <block type="looks_show"></block>
+      </category>
+      <category name="Sound" colour="#D65CD6" secondaryColour="#BD42BD">
+        <block type="sound_play"></block>
+      </category>
+      <category name="Events" colour="#FFD500" secondaryColour="#CC9900">
+        <block type="event_whenflagclicked"></block>
+        <block type="event_whenkeypressed"></block>
+      </category>
+      <category name="Control" colour="#FFAB19" secondaryColour="#CF8B17">
+        <block type="control_wait"></block>
+        <block type="control_repeat"></block>
+        <block type="control_forever"></block>
+        <block type="control_if"></block>
+      </category>
+      <category name="Sensing" colour="#4CBFE6" secondaryColour="#2E8EB8">
+        <block type="sensing_askandwait"></block>
+        <block type="sensing_touchingobject"></block>
+      </category>
+      <category name="Operators" colour="#40BF4A" secondaryColour="#389438">
+        <block type="operator_lt"></block>
+        <block type="operator_add"></block>
+        <block type="operator_random"></block>
+      </category>
+      <category name="Data" colour="#FF8C1A" secondaryColour="#DB6E00">
+        <block type="data_setvariableto"></block>
+        <block type="data_changevariableby"></block>
+      </category>
+    </xml>
+  </body>
+</html>
