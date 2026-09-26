@@ -281,11 +281,46 @@ Blockly.BlockSvg.prototype.getIcons = function() {
 
 Blockly.BlockSvg.prototype.intersects_ = true;
 
+// PATCH 8 (2026-09-26): block culling, gated on window.__hmBlockCulling.
+// When the flag is on, an off-screen block is detached from its parent <g>
+// instead of being hidden with display:none. Detached nodes leave the style /
+// layout / hit-test trees entirely, which is what makes a workspace with tens of
+// thousands of blocks stay smooth while dragging. The original parent is
+// remembered so the block can be put back exactly where it was.
+// Geometry survives detachment: getHeightWidth() reads this.width/this.height,
+// computed from canvas measureText() during render(), not from layout.
+// With the flag off this behaves exactly as before.
 Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
   if (intersects === this.intersects_) {
     return;
   }
   this.intersects_ = intersects;
+  if (window.__hmBlockCulling) {
+    var cullRoot = this.getSvgRoot();
+    if (!cullRoot) {
+      return;
+    }
+    if (intersects) {
+      var parent = this.hmDetachedParent_;
+      this.hmDetachedParent_ = null;
+      if (parent && !cullRoot.parentNode) {
+        Blockly.BlockSvg.hmReinsertIntoGroup_(parent, cullRoot);
+      }
+    } else {
+      // Never detach a block that is mid-drag or while the workspace itself is
+      // being dragged: the drag surface and gesture code expect it attached.
+      // `blocklyDragging` is put on the block's own <g> by setDragging() when a
+      // drag starts and removed when it ends.
+      if ((cullRoot.classList && cullRoot.classList.contains('blocklyDragging')) ||
+          (this.workspace && this.workspace.isDragging && this.workspace.isDragging()) ||
+          !cullRoot.parentNode) {
+        return;
+      }
+      this.hmDetachedParent_ = cullRoot.parentNode;
+      cullRoot.parentNode.removeChild(cullRoot);
+    }
+    return;
+  }
   var root = this.getSvgRoot();
   if (!root) {
     return;
@@ -297,6 +332,36 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
   }
 };
 
+/**
+ * Put a detached block root back into the group it came from. The plain append
+ * is enough here because this fork does not maintain a z-order key on blocks.
+ * @param {!Element} group Parent <g> the block was detached from.
+ * @param {!Element} root The block's <g> root.
+ */
+Blockly.BlockSvg.hmReinsertIntoGroup_ = function(group, root) {
+  group.appendChild(root);
+};
+
+/**
+ * Bring every detached block back on screen. Called when the culling toggle is
+ * switched off so blocks do not stay detached until the next scroll.
+ * @param {!Blockly.WorkspaceSvg} workspace Workspace to restore.
+ */
+Blockly.BlockSvg.hmReattachAll = function(workspace) {
+  if (!workspace || !workspace.intersectionObserver) {
+    return;
+  }
+  var observing = workspace.intersectionObserver.observing || [];
+  observing.forEach(function(block) {
+    if (block.hmDetachedParent_) {
+      block.hmDetachedParent_ = null;
+      if (block.getSvgRoot() && block.workspace) {
+        block.setIntersects(true);
+      }
+    }
+  });
+};
+
 Blockly.BlockSvg.prototype.updateIntersectionObserver = function() {
   if (this.workspace.intersectionObserver) {
     if (this.getParent()) {
@@ -305,9 +370,27 @@ Blockly.BlockSvg.prototype.updateIntersectionObserver = function() {
         this.setIntersects(true);
       }
     } else {
+      // PATCH 8 (2026-09-26): a block becoming top-level (unplugged, dragged out,
+      // pasted) is about to be observed again. If it happens to be culled at that
+      // moment its <g> is detached, and the branch above -- the only place that
+      // restores visibility -- is never taken, so it would stay invisible.
+      // Bring it back before observing. No-op with culling off.
+      this.hmReattachIfDetached();
       this.workspace.intersectionObserver.observe(this);
     }
   }
+};
+
+/**
+ * Re-attach this block's <g> if it is currently detached by culling.
+ * PATCH 8 (2026-09-26). Safe to call at any time; does nothing when the block
+ * is visible or when culling is off.
+ */
+Blockly.BlockSvg.prototype.hmReattachIfDetached = function() {
+  if (!this.hmDetachedParent_) {
+    return;
+  }
+  this.setIntersects(true);
 };
 
 /**

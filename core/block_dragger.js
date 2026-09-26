@@ -203,6 +203,14 @@ Blockly.BlockDragger.prototype.dragBlock = function(e, currentDragDeltaXY) {
   this.draggingBlock_.moveDuringDrag(newLoc);
   this.dragIcons_(delta);
 
+  // PATCH 8 (2026-09-26): re-run the intersection check on every drag frame so
+  // the blocks scrolling in and out of view around the dragged stack are
+  // culled/unculled as it moves. Without this the check only ran on
+  // resize/scroll/load, so a drag across a huge workspace never updated culling.
+  if (this.workspace_.queueIntersectionCheck) {
+    this.workspace_.queueIntersectionCheck();
+  }
+
   this.deleteArea_ = this.workspace_.isDeleteArea(e);
   var isOutside = !this.workspace_.isInsideBlocksArea(e);
   this.draggedConnectionManager_.update(delta, this.deleteArea_, isOutside);

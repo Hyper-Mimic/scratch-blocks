@@ -699,6 +699,23 @@ Blockly.WorkspaceSvg.prototype.queueIntersectionCheck = function() {
 };
 
 /**
+ * Turn block culling on or off at runtime. Called by the GUI when the
+ * advanced-settings toggle flips.
+ * PATCH 8 (2026-09-26): `window.__hmBlockCulling` is read by setIntersects and
+ * by IntersectionObserver.queueIntersectionCheck, so both need it in sync.
+ * Turning it off also re-attaches any block that is currently detached, so
+ * hidden blocks do not stay invisible until the next scroll.
+ * @param {boolean} enabled Whether culling should be on.
+ */
+Blockly.WorkspaceSvg.prototype.hmApplyBlockCulling = function(enabled) {
+  window.__hmBlockCulling = !!enabled;
+  if (!enabled) {
+    Blockly.BlockSvg.hmReattachAll(this);
+  }
+  this.queueIntersectionCheck();
+};
+
+/**
  * Call *before* modifying scripts.
  */
 Blockly.WorkspaceSvg.prototype.procedureReturnsWillChange = function() {

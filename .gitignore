@@ -46,3 +46,7 @@ python_compressed.js
 /chromedriver
 # --flagfiles used on Windows
 /*.config
+
+# Local patch backups (large) -- the script and its report are kept, the
+# pre-patch copies are not.
+/.workbuddy/backups/

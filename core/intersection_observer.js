@@ -35,6 +35,14 @@ Blockly.IntersectionObserver.prototype.queueIntersectionCheck = function() {
     return;
   }
   this.intersectionCheckQueued = true;
+  // PATCH 8 (2026-09-26): when the culling toggle is on, coalesce onto an
+  // animation frame. A microtask drains many times per painted frame, so a
+  // burst of drag/scroll events ran the full O(blocks) check repeatedly within
+  // one frame; rAF collapses all of them into a single check per frame.
+  if (window.__hmBlockCulling && window.requestAnimationFrame) {
+    window.requestAnimationFrame(this.checkForIntersections);
+    return;
+  }
   // Check for intersections on the next microtick
   // Prefer to use the native method when available, otherwise fallback to a Promise-based polyfill
   if (window.queueMicrotask) {
