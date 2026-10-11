@@ -47,4 +47,5 @@ python_compressed.js
 # --flagfiles used on Windows
 /*.config
 
-/core - 副本
+#workbuddy
+.workbuddy/
