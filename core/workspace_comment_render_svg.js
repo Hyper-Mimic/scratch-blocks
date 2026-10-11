@@ -557,6 +557,10 @@ Blockly.WorkspaceCommentSvg.prototype.resizeComment_ = function() {
  * @package
  */
 Blockly.WorkspaceCommentSvg.prototype.setSize = function(width, height) {
+  // PATCH 9 (2026-10-10): top comments feed getBlocksBoundingBox() via
+  // getBoundingRectangle(); drop the cached content box.
+  // PATCH 13 (2026-10-10): only this comment's rectangle changed.
+  this.workspace.invalidateContentBounds_(this);
   var oldWidth = this.width_;
   var oldHeight = this.height_;
 

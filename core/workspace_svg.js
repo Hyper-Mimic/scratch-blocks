@@ -121,6 +121,19 @@ Blockly.WorkspaceSvg = function(options, opt_blockDragSurface, opt_wsDragSurface
   this.initialProcedureReturnTypes_ = null;
   this.procedureReturnChangeTimeout_ = null;
   this.checkProcedureReturnAfterGesture_ = false;
+
+  // PATCH 9 (2026-10-10): cache of getBlocksBoundingBox(), in workspace units.
+  // That call walks every top block/comment and recurses down each next-chain, so
+  // it costs O(total blocks); it is reached from every getMetrics(), which itself
+  // runs 1-3x per pan/zoom frame. The box only depends on content, never on the
+  // view transform, so it can be reused across pan/zoom and recomputed only when
+  // content actually changes.
+  this.contentBoundingBox_ = null;
+  this.contentBoundingBoxDirty_ = true;
+  // Number of top blocks + top comments the cached box was built from. A cheap
+  // O(1) sanity net: if anything adds or removes a top element without going
+  // through invalidateContentBounds_(), the count mismatches and we recompute.
+  this.contentBoundingBoxCount_ = 0;
 };
 goog.inherits(Blockly.WorkspaceSvg, Blockly.Workspace);
 
@@ -444,14 +457,30 @@ Blockly.WorkspaceSvg.prototype.createDom = function(opt_backgroundClass) {
   // valid target inside it.  If no background class is specified, as in the
   // flyout, the workspace will not receive mouse events.
   if (opt_backgroundClass) {
+    // PATCH 14 (2026-10-11): the grid-bearing background rect is oversized and
+    // carries the pan/zoom transform (see Blockly.Grid.attachBackground). A
+    // viewport-sized rect would slide out of view as soon as it is translated,
+    // and re-sizing it on every pan is exactly the work being avoided here.
+    var isMainBackground =
+        opt_backgroundClass == 'blocklyMainBackground' && this.grid_;
+    var backgroundAttrs = {'class': opt_backgroundClass};
+    if (isMainBackground) {
+      backgroundAttrs['x'] = -50000;
+      backgroundAttrs['y'] = -50000;
+      backgroundAttrs['width'] = 100000;
+      backgroundAttrs['height'] = 100000;
+    } else {
+      backgroundAttrs['height'] = '100%';
+      backgroundAttrs['width'] = '100%';
+    }
     /** @type {SVGElement} */
     this.svgBackground_ = Blockly.utils.createSvgElement('rect',
-        {'height': '100%', 'width': '100%', 'class': opt_backgroundClass},
-        this.svgGroup_);
+        backgroundAttrs, this.svgGroup_);
 
-    if (opt_backgroundClass == 'blocklyMainBackground' && this.grid_) {
+    if (isMainBackground) {
       this.svgBackground_.style.fill =
           'url(#' + this.grid_.getPatternId() + ')';
+      this.grid_.attachBackground(this.svgBackground_);
     }
   }
   /** @type {SVGElement} */
@@ -679,7 +708,32 @@ Blockly.WorkspaceSvg.prototype.updateScreenCalculations_ = function() {
  * workspace contents if needed.
  * @package
  */
-Blockly.WorkspaceSvg.prototype.resizeContents = function() {
+Blockly.WorkspaceSvg.prototype.resizeContents = function(opt_element) {
+  // PATCH 9 (2026-10-10): this is the hub every content mutation funnels through
+  // (block moveBy/render/dispose, comment moveBy/dispose all end up here). Mark
+  // the bounds cache stale BEFORE the early-return, otherwise a suppressed resize
+  // would leave a stale box behind.
+  // PATCH 12 (2026-10-10): opt_element names the one top block/comment whose
+  // stack actually changed, so only that stack has to be re-measured. Callers
+  // that cannot name it (clear, xml import, resize resume) still omit it and get
+  // the previous whole-workspace invalidate.
+  this.invalidateContentBounds_(opt_element);
+  if (this.contentUpdateDepth_) {
+    // PATCH 13 (2026-10-10): inside a content-update batch (stack disposal) the
+    // scrollbar half is deferred to endContentUpdate_, which runs it once for
+    // the whole batch. Disposing an N-deep stack used to do it N times.
+    return;
+  }
+  this.performContentResize_();
+};
+
+/**
+ * PATCH 13 (2026-10-10): the expensive half of resizeContents(), split out so a
+ * batch can run it exactly once. Invalidates nothing -- callers are responsible
+ * for having marked whatever changed.
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.performContentResize_ = function() {
   if (!this.resizesEnabled_ || !this.rendered) {
     return;
   }
@@ -690,6 +744,26 @@ Blockly.WorkspaceSvg.prototype.resizeContents = function() {
     this.scrollbar.resize();
   }
   this.updateInverseScreenCTM();
+};
+
+/**
+ * PATCH 13 (2026-10-10): bracket a burst of content mutations so the workspace
+ * resizes its scrollbars/bounds once at the end instead of once per mutated
+ * block. Reentrant: only the outermost pair performs the resize.
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.beginContentUpdate_ = function() {
+  this.contentUpdateDepth_ = (this.contentUpdateDepth_ || 0) + 1;
+};
+
+Blockly.WorkspaceSvg.prototype.endContentUpdate_ = function() {
+  if (!this.contentUpdateDepth_) {
+    return;
+  }
+  this.contentUpdateDepth_--;
+  if (this.contentUpdateDepth_ === 0) {
+    this.performContentResize_();
+  }
 };
 
 Blockly.WorkspaceSvg.prototype.queueIntersectionCheck = function() {
@@ -1472,6 +1546,136 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
 };
 
 /**
+ * PATCH 9 (2026-10-10): drop the cached content bounding box.
+ * Call from anything that can change the set of top blocks/comments, their
+ * workspace coordinates, or their rendered height/width.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.invalidateContentBounds_ = function(opt_element) {
+  this.contentBoundingBoxDirty_ = true;
+  // PATCH 12 (2026-10-10): lazily create the per-element rectangle bookkeeping.
+  // Keeping it lazy means no constructor initialisation is needed.
+  if (!this.contentRectDirty_) {
+    this.contentRectDirty_ = new Set();
+    if (!this.contentRectCache_) {
+      this.contentRectCache_ = new Map();
+    }
+  }
+  if (opt_element && !this.contentRectAllDirty_) {
+    // PATCH 12: only this top element's rectangle is stale. Re-measuring one
+    // stack is what takes a per-keystroke field edit from O(all stacks) to
+    // O(one stack).
+    this.contentRectDirty_.add(opt_element);
+  } else {
+    // Unknown, or a caller that can affect anything: re-seed from scratch.
+    this.contentRectAllDirty_ = true;
+    this.contentRectDirty_.clear();
+  }
+  if (this.intersectionObserver) {
+    // PATCH 11 (2026-10-10): the intersection observer caches per-block rects
+    // off this same signal, because that geometry too only changes with content.
+    this.intersectionObserver.contentDirty_ = true;
+  }
+};
+
+/**
+ * PATCH 12 (2026-10-10): refresh the per-top-element rectangle table.
+ *
+ * getBlocksBoundingBox() unions this table and the IntersectionObserver culls
+ * from it, so the two of them can never disagree about where a stack is.
+ * Re-measures only the elements flagged by invalidateContentBounds_(element);
+ * a full re-seed happens when the set of top elements itself changed. Cheap and
+ * idempotent, so calling it from more than one consumer in the same frame costs
+ * nothing after the first call.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.refreshContentRects_ = function() {
+  if (!this.contentRectCache_) {
+    this.contentRectCache_ = new Map();
+    this.contentRectDirty_ = new Set();
+    this.contentRectAllDirty_ = true;
+  } else if (!this.contentRectDirty_) {
+    this.contentRectDirty_ = new Set();
+  }
+
+  var topCount = this.topBlocks_.length + this.topComments_.length;
+  var cache = this.contentRectCache_;
+  if (this.contentRectAllDirty_ || this.contentRectSetDirty_ ||
+      cache.size !== topCount) {
+    // A stale count means a top element appeared or vanished outside of an
+    // element-level invalidation.
+    var topElements = this.getTopBlocks(false).concat(this.getTopComments(false));
+    if (this.contentRectAllDirty_) {
+      // Unknown scope: nothing can be trusted, re-seed everything.
+      cache.clear();
+      this.contentRectDirty_.clear();
+      for (var i = 0; i < topElements.length; i++) {
+        this.contentRectDirty_.add(topElements[i]);
+      }
+    } else {
+      // PATCH 13 (2026-10-10): reconcile instead of re-seeding. A stack that
+      // appeared or vanished says nothing about the stacks around it, so only
+      // the newcomers get measured. Deleting one block used to make every stack
+      // in the workspace re-measure, which is what made deletion (and the block
+      // a flyout drag adds) cost O(all blocks).
+      var present = new Set();
+      for (var j = 0; j < topElements.length; j++) {
+        present.add(topElements[j]);
+      }
+      // Drop table entries whose element is gone.
+      var gone = [];
+      cache.forEach(function(rect, element) {
+        if (!present.has(element)) {
+          gone.push(element);
+        }
+      });
+      for (var k = 0; k < gone.length; k++) {
+        cache.delete(gone[k]);
+      }
+      // A disposed block can still be sitting in the dirty set; keep only live
+      // elements there, then flag every newcomer that has no rectangle yet.
+      var liveDirty = new Set();
+      this.contentRectDirty_.forEach(function(element) {
+        if (present.has(element)) {
+          liveDirty.add(element);
+        }
+      });
+      this.contentRectDirty_ = liveDirty;
+      for (var m = 0; m < topElements.length; m++) {
+        if (!cache.has(topElements[m])) {
+          this.contentRectDirty_.add(topElements[m]);
+        }
+      }
+    }
+    this.contentRectAllDirty_ = false;
+    this.contentRectSetDirty_ = false;
+  } else if (this.contentRectDirty_.size === 0) {
+    return;
+  }
+
+  this.contentRectDirty_.forEach(function(element) {
+    // PATCH 18 (2026-10-11): a disposed element can still be flagged dirty --
+    // dispose() marks its stack, and an add plus a removal in the same frame can
+    // leave the top-element count unchanged, which skips the reconcile pass that
+    // filters dead entries. Measuring it throws, because
+    // getBoundingRectangle() -> getRelativeToSurfaceXY() dereferences the
+    // workspace link dispose() already cleared.
+    if (!element.workspace) {
+      cache.delete(element);
+      return;
+    }
+    var rect = element.getBoundingRectangle();
+    cache.set(element, {
+      left: rect.topLeft.x,
+      top: rect.topLeft.y,
+      width: rect.bottomRight.x - rect.topLeft.x,
+      height: rect.bottomRight.y - rect.topLeft.y
+    });
+  });
+  this.contentRectDirty_.clear();
+};
+
+/**
  * Calculate the bounding box for the blocks on the workspace.
  * Coordinate system: workspace coordinates.
  *
@@ -1479,38 +1683,71 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
  *   containing the blocks on the workspace.
  */
 Blockly.WorkspaceSvg.prototype.getBlocksBoundingBox = function() {
-  var topBlocks = this.getTopBlocks(false);
-  var topComments = this.getTopComments(false);
-  var topElements = topBlocks.concat(topComments);
+  var count = this.topBlocks_.length + this.topComments_.length;
+  // PATCH 9 (2026-10-10): serve the cached box while content is unchanged.
+  // Callers only read the result, but hand out a copy so nothing can mutate the
+  // cache. Copying four numbers beats re-walking every stack by a wide margin.
+  if (!this.contentBoundingBoxDirty_ && this.contentBoundingBox_ &&
+      this.contentBoundingBoxCount_ === count) {
+    var cached = this.contentBoundingBox_;
+    return {
+      x: cached.x, y: cached.y, width: cached.width, height: cached.height
+    };
+  }
+
+  // PATCH 12 (2026-10-10): the number of top elements changed, so the cached
+  // per-element rectangles no longer describe the same set.
+  // PATCH 13 (2026-10-10): reconcile the table rather than re-seed it -- the
+  // surviving stacks did not move, so only the added/removed ones cost anything.
+  if (this.contentBoundingBoxCount_ !== count) {
+    this.contentRectSetDirty_ = true;
+  }
+  // PATCH 12: only the stacks flagged since the last call are re-measured.
+  this.refreshContentRects_();
+
+  var cache = this.contentRectCache_;
   // There are no blocks, return empty rectangle.
-  if (!topElements.length) {
+  if (!cache || cache.size === 0) {
+    this.contentBoundingBox_ = {x: 0, y: 0, width: 0, height: 0};
+    this.contentBoundingBoxDirty_ = false;
+    this.contentBoundingBoxCount_ = 0;
     return {x: 0, y: 0, width: 0, height: 0};
   }
 
-  // Initialize boundary using the first block.
-  var boundary = topElements[0].getBoundingRectangle();
+  // Union the per-element rectangles. O(top elements) of pure arithmetic.
+  var minX = Infinity;
+  var minY = Infinity;
+  var maxX = -Infinity;
+  var maxY = -Infinity;
+  cache.forEach(function(rect) {
+    if (rect.left < minX) {
+      minX = rect.left;
+    }
+    if (rect.top < minY) {
+      minY = rect.top;
+    }
+    if (rect.left + rect.width > maxX) {
+      maxX = rect.left + rect.width;
+    }
+    if (rect.top + rect.height > maxY) {
+      maxY = rect.top + rect.height;
+    }
+  });
 
-  // Start at 1 since the 0th block was used for initialization
-  for (var i = 1; i < topElements.length; i++) {
-    var blockBoundary = topElements[i].getBoundingRectangle();
-    if (blockBoundary.topLeft.x < boundary.topLeft.x) {
-      boundary.topLeft.x = blockBoundary.topLeft.x;
-    }
-    if (blockBoundary.bottomRight.x > boundary.bottomRight.x) {
-      boundary.bottomRight.x = blockBoundary.bottomRight.x;
-    }
-    if (blockBoundary.topLeft.y < boundary.topLeft.y) {
-      boundary.topLeft.y = blockBoundary.topLeft.y;
-    }
-    if (blockBoundary.bottomRight.y > boundary.bottomRight.y) {
-      boundary.bottomRight.y = blockBoundary.bottomRight.y;
-    }
-  }
+  // PATCH 9 (2026-10-10): memoize. Pan/zoom never reaches this branch, because
+  // it only mutates the canvas transform and never the content, so all frames
+  // between two content changes are served from the cache above.
+  this.contentBoundingBox_ = {
+    x: minX, y: minY, width: maxX - minX, height: maxY - minY
+  };
+  this.contentBoundingBoxDirty_ = false;
+  this.contentBoundingBoxCount_ = count;
+  var box = this.contentBoundingBox_;
   return {
-    x: boundary.topLeft.x,
-    y: boundary.topLeft.y,
-    width: boundary.bottomRight.x - boundary.topLeft.x,
-    height: boundary.bottomRight.y - boundary.topLeft.y
+    x: box.x,
+    y: box.y,
+    width: box.width,
+    height: box.height
   };
 };
 
@@ -2166,11 +2403,18 @@ Blockly.WorkspaceSvg.getTopLevelWorkspaceMetrics_ = function() {
  * @private
  * @this Blockly.WorkspaceSvg
  */
-Blockly.WorkspaceSvg.setTopLevelWorkspaceMetrics_ = function(xyRatio) {
+Blockly.WorkspaceSvg.setTopLevelWorkspaceMetrics_ = function(xyRatio, opt_metrics) {
   if (!this.scrollbar) {
     throw 'Attempt to set top level workspace scroll without scrollbars.';
   }
-  var metrics = this.getMetrics();
+  // PATCH 10 (2026-10-10): reuse caller-provided metrics.
+  // ScrollbarPair.resize() already computed hostMetrics and handed it to each
+  // Scrollbar.resize(), but the onScroll_ -> setMetrics round-trip called
+  // getMetrics() again, once per scrollbar. Taking the object through removes two
+  // O(blocks) getMetrics per zoom without changing a single value.
+  // Callers that pass nothing (Scrollbar.set, dragging the handle, flyout
+  // setMetrics_ overrides) keep the original behaviour.
+  var metrics = opt_metrics || this.getMetrics();
   if (goog.isNumber(xyRatio.x)) {
     this.scrollX = -metrics.contentWidth * xyRatio.x - metrics.contentLeft;
   }
@@ -2225,6 +2469,9 @@ Blockly.WorkspaceSvg.prototype.clear = function() {
   this.setResizesEnabled(false);
   Blockly.WorkspaceSvg.superClass_.clear.call(this);
   this.setResizesEnabled(true);
+  // PATCH 9 (2026-10-10): resizes are suppressed above, so resizeContents() bails
+  // out early and never invalidates. Do it explicitly.
+  this.invalidateContentBounds_();
 };
 
 /**

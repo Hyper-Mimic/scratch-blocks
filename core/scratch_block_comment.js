@@ -436,6 +436,12 @@ Blockly.ScratchBlockComment.prototype.setBubbleSize = function(width, height) {
  * @package
  */
 Blockly.ScratchBlockComment.prototype.setSize = function(width, height) {
+  // PATCH 9 (2026-10-10): this comment is registered in workspace.topComments_
+  // (see addTopComment below), so its size feeds getBlocksBoundingBox(). Drop
+  // the cached content box.
+  // PATCH 13 (2026-10-10): the comment is itself a top element, so name it
+  // instead of re-seeding every stack.
+  this.workspace.invalidateContentBounds_(this);
   var oldWidth = this.width_;
   var oldHeight = this.height_;
 
@@ -502,6 +508,9 @@ Blockly.ScratchBlockComment.prototype.moveTo = function(x, y) {
   this.y_ = y;
   event.recordNew();
   Blockly.Events.fire(event);
+  // PATCH 9 (2026-10-10): comment moved -> cached content box is stale.
+  // PATCH 13 (2026-10-10): only this comment's rectangle changed.
+  this.workspace.invalidateContentBounds_(this);
 };
 
 /**
@@ -636,6 +645,9 @@ Blockly.ScratchBlockComment.prototype.dispose = function() {
   this.block_.comment = null;
   this.workspace.removeTopComment(this);
   Blockly.Icon.prototype.dispose.call(this);
+  // PATCH 9 (2026-10-10): the comment left topComments_ -> cached box is stale.
+  // PATCH 13 (2026-10-10): name it; the table reconcile drops it from there.
+  this.workspace.invalidateContentBounds_(this);
 };
 
 /**

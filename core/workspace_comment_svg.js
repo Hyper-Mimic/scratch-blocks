@@ -123,6 +123,17 @@ Blockly.WorkspaceCommentSvg.prototype.dispose = function() {
   // Dispose of any rendered components
   this.disposeInternal_();
 
+  // PATCH 9 (2026-10-10): the comment is about to leave topComments_ -> cached
+  // content box becomes stale. Must run BEFORE the super call, which nulls out
+  // this.workspace.
+  // PATCH 13 (2026-10-10): name it; the table reconcile drops it from there.
+  this.workspace.invalidateContentBounds_(this);
+
+  // PATCH 9 (2026-10-10): the comment is about to leave topComments_ -> cached
+  // content box becomes stale. Must run BEFORE the super call, which nulls out
+  // this.workspace.
+  this.workspace.invalidateContentBounds_();
+
   Blockly.Events.disable();
   Blockly.WorkspaceCommentSvg.superClass_.dispose.call(this);
   Blockly.Events.enable();
@@ -327,6 +338,11 @@ Blockly.WorkspaceCommentSvg.prototype.translate = function(x, y) {
   this.xy_ = new goog.math.Coordinate(x, y);
   this.getSvgRoot().setAttribute('transform',
       'translate(' + x + ',' + y + ')');
+  // PATCH 9 (2026-10-10): top comments feed getBlocksBoundingBox() via
+  // getBoundingRectangle(); the cached content box is now stale.
+  // PATCH 13 (2026-10-10): dragging a comment used to re-seed every stack on
+  // every frame; it is a top element, name it.
+  this.workspace.invalidateContentBounds_(this);
 };
 
 /**

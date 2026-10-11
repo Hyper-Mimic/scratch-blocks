@@ -120,6 +120,15 @@ Blockly.BlockDragSurfaceSvg.prototype.createDom = function() {
         'version': '1.1',
         'class': 'blocklyBlockDragSurface'
       }, this.container_);
+  // PATCH 19 (2026-10-11): the drag surface's transform is rewritten on every
+  // mousemove; without a layer hint Blink re-runs layerization over the content
+  // behind it on each of those frames, and that pass scales with how many blocks
+  // are on screen. Measured while dragging one small block in front of a
+  // 400-block stack: 139ms of a 26-move drag inside Layerize, 68ms with this
+  // hint, whole drag 212ms -> 123ms. The same hint on the block canvas is a loss
+  // (167ms) and on both is worse than the drag surface alone (148ms). The layer
+  // only exists while a drag is on -- clearAndHide() sets display:none.
+  this.SVG_.style.willChange = 'transform';
   this.dragGroup_ = Blockly.utils.createSvgElement('g', {}, this.SVG_);
   // Belongs in Scratch Blocks, but not Blockly.
   var defs = Blockly.utils.createSvgElement('defs', {}, this.SVG_);

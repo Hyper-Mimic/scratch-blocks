@@ -681,7 +681,10 @@ Blockly.BlockSvg.prototype.render = function(opt_bubble) {
       parentBlock.render(true);
     } else {
       // Top-most block.  Fire an event to allow scrollbars to resize.
-      Blockly.resizeSvgContents(this.workspace);
+      // PATCH 12 (2026-10-10): this branch is only reached from a top block, so
+      // `this` names the single stack whose geometry changed. Editing a field
+      // therefore re-measures one stack instead of the whole workspace.
+      Blockly.resizeSvgContents(this.workspace, this);
     }
   }
   Blockly.Field.stopCache();

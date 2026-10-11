@@ -6,27 +6,49 @@ Blockly.IntersectionObserver = function(workspace) {
   this.workspace = workspace;
   this.observing = [];
   this.intersectionCheckQueued = false;
+  // PATCH 12 (2026-10-10): the per-block rectangles are no longer cached here.
+  // They live on the workspace (see refreshContentRects_), shared with
+  // getBlocksBoundingBox, so the culling pass and the scrollbar bounds can never
+  // disagree and a single re-rendered stack is measured once instead of twice.
+  // contentDirty_ means "ask the workspace to refresh its table before reading".
+  this.contentDirty_ = true;
   this.checkForIntersections = this.checkForIntersections.bind(this);
 };
 
 Blockly.IntersectionObserver.prototype.observe = function(block) {
-  var index = this.observing.indexOf(block);
-  if (index === -1) {
+  // PATCH 13 (2026-10-10): keep an O(1) membership index beside the array, which
+  // stays because the culling pass depends on its iteration order. Deleting a
+  // deep stack used to cost O(observing) per disposed block just to find out it
+  // was not observed at all (only top blocks are).
+  if (!this.observingSet_) {
+    this.observingSet_ = new Set();
+  }
+  if (!this.observingSet_.has(block)) {
+    this.observingSet_.add(block);
     this.observing.push(block);
+    // PATCH 11 (2026-10-10): membership changed -> cached rects are stale.
+    this.contentDirty_ = true;
   }
 };
 
 Blockly.IntersectionObserver.prototype.unobserve = function(block) {
-  var index = this.observing.indexOf(block);
-  if (index !== -1) {
-    this.observing = this.observing.filter(function(i) {
-      return i !== block;
-    });
+  if (this.observingSet_) {
+    if (!this.observingSet_.delete(block)) {
+      return;
+    }
+  } else if (this.observing.indexOf(block) === -1) {
+    return;
   }
+  this.observing = this.observing.filter(function(i) {
+    return i !== block;
+  });
+  // PATCH 11 (2026-10-10): membership changed -> cached rects are stale.
+  this.contentDirty_ = true;
 };
 
 Blockly.IntersectionObserver.prototype.dispose = function() {
   this.observing = [];
+  this.observingSet_ = null;
   this.workspace = null;
 };
 
@@ -62,7 +84,6 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
 
   var workspace = this.workspace;
   var workspaceScale = workspace.scale;
-  var RTL = workspace.RTL;
   var workspaceHeight = workspace.getParentSvg().height.baseVal.value;
   var workspaceWidth = workspace.getParentSvg().width.baseVal.value;
   if (workspace.isDragSurfaceActive_) {
@@ -85,39 +106,57 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     draggedNode = blockDragSurface.getCurrentBlock() || null;
   }
 
+  // PATCH 12 (2026-10-10): read the rectangles off the workspace's shared table
+  // instead of re-measuring every stack here. The table is refreshed lazily and
+  // incrementally, and usually already up to date because the same content
+  // change that queued this check also made the workspace recompute its bounds.
+  if (this.contentDirty_) {
+    workspace.refreshContentRects_();
+    this.contentDirty_ = false;
+  }
+  var rects = workspace.contentRectCache_;
+
   for (var i = 0; i < this.observing.length; i++) {
     var block = this.observing[i];
     if (draggedNode && block.getSvgRoot() === draggedNode) {
       block.setIntersects(true);
       continue;
     }
-    var blockPos = block.getRelativeToSurfaceXY();
-    var blockSize = null;
-    if (RTL) {
-      blockSize = block.getHeightWidth();
-      blockPos.x -= blockSize.width;
-      blockSize.width *= workspaceScale;
-      blockSize.height *= workspaceScale;
+
+    var rect = rects && rects.get(block);
+    if (!rect) {
+      // Safety net: an observed block the workspace table has not seen yet.
+      // Measure it now and hand the result to the table for later frames.
+      var pos = block.getRelativeToSurfaceXY();
+      var size = block.getHeightWidth();
+      rect = {
+        left: block.RTL ? pos.x - size.width : pos.x,
+        top: pos.y,
+        width: size.width,
+        height: size.height
+      };
+      if (rects) {
+        rects.set(block, rect);
+      }
     }
-    blockPos.x *= workspaceScale;
-    blockPos.y *= workspaceScale;
+
+    // rect.left already carries the RTL shift that this pass used to apply by
+    // hand: BlockSvg.getBoundingRectangle() subtracts the width in RTL, exactly
+    // like the old `if (RTL) blockPosX -= blockWidth`.
+    var blockPosX = rect.left * workspaceScale;
+    var blockPosY = rect.top * workspaceScale;
+    var blockWidth = rect.width * workspaceScale;
+    var blockHeight = rect.height * workspaceScale;
 
     var visible = true;
-    if (canvasPos.y + blockPos.y - margin > workspaceHeight) {
+    if (canvasPos.y + blockPosY - margin > workspaceHeight) {
       visible = false;
-    } else if (canvasPos.x + blockPos.x - margin > workspaceWidth) {
+    } else if (canvasPos.x + blockPosX - margin > workspaceWidth) {
       visible = false;
-    } else {
-      if (!blockSize) {
-        blockSize = block.getHeightWidth();
-        blockSize.width *= workspaceScale;
-        blockSize.height *= workspaceScale;
-      }
-      if (canvasPos.x + blockPos.x + blockSize.width + margin < 0) {
-        visible = false;
-      } else if (canvasPos.y + blockPos.y + blockSize.height + margin < 0) {
-        visible = false;
-      }
+    } else if (canvasPos.x + blockPosX + blockWidth + margin < 0) {
+      visible = false;
+    } else if (canvasPos.y + blockPosY + blockHeight + margin < 0) {
+      visible = false;
     }
 
     block.setIntersects(visible);

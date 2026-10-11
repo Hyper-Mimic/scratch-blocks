@@ -454,7 +454,9 @@ Blockly.Scrollbar.prototype.resize = function(opt_metrics) {
     this.resizeVertical_(hostMetrics);
   }
   // Resizing may have caused some scrolling.
-  this.onScroll_();
+  // PATCH 10 (2026-10-10): hand the metrics we already hold down to setMetrics,
+  // so the onScroll_ round-trip does not fetch them from the workspace again.
+  this.onScroll_(hostMetrics);
 };
 
 /**
@@ -832,9 +834,12 @@ Blockly.Scrollbar.prototype.constrainHandle_ = function(value) {
 
 /**
  * Called when scrollbar is moved.
+ * PATCH 10 (2026-10-10): opt_metrics lets resize() forward the metrics it already
+ * computed. Omitted by set()/handle-dragging, which keep the old behaviour.
+ * @param {Object=} opt_metrics Metrics already fetched by the caller.
  * @private
  */
-Blockly.Scrollbar.prototype.onScroll_ = function() {
+Blockly.Scrollbar.prototype.onScroll_ = function(opt_metrics) {
   var ratio = this.handlePosition_ / this.scrollViewSize_;
   if (isNaN(ratio)) {
     ratio = 0;
@@ -845,7 +850,7 @@ Blockly.Scrollbar.prototype.onScroll_ = function() {
   } else {
     xyRatio.y = ratio;
   }
-  this.workspace_.setMetrics(xyRatio);
+  this.workspace_.setMetrics(xyRatio, opt_metrics);
 };
 
 /**

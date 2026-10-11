@@ -139,8 +139,12 @@ Blockly.svgSize = function(svg) {
  * scrollbars accordingly.
  * @param {!Blockly.WorkspaceSvg} workspace The workspace to resize.
  */
-Blockly.resizeSvgContents = function(workspace) {
-  workspace.resizeContents();
+Blockly.resizeSvgContents = function(workspace, opt_element) {
+  // PATCH 12 (2026-10-10): opt_element is the top block/comment whose stack just
+  // changed geometry (a re-render always bubbles up to a top block). Threading it
+  // through lets the workspace re-measure just that stack. Omitted by callers
+  // with no such information, which keeps the previous whole-workspace invalidate.
+  workspace.resizeContents(opt_element);
 };
 
 /**
