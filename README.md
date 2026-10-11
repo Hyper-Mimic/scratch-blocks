@@ -1,5 +1,7 @@
 # Hyper-Mimic/scratch-blocks
 
+English | [简体中文](README_zh-cn.md)
+
 ## Playgrounds
 
  - **Vertical blocks**: https://turbowarp.github.io/scratch-blocks/tests/vertical_playground_compressed.html
