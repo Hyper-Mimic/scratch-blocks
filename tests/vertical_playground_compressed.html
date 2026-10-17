@@ -11,6 +11,8 @@
     <script src="../msg/scratch_msgs.js"></script>
     <script src="../blocks_compressed.js"></script>
     <script src="../blocks_compressed_vertical.js"></script>
+    <script src="../node_modules/jszip/dist/jszip.min.js"></script>
+    <script src="sprite3_loader.js"></script>
     <script>
       'use strict';
 
@@ -679,6 +681,12 @@
       <textarea id="importExport" style="width: 26%; height: 12em"
         onchange="taChange();" onkeyup="taChange()"></textarea>
     </p>
+
+    <p>
+      <input type="button" value="Open .sprite3" onclick="Sprite3Loader.open(workspace)">
+      &nbsp;<span id="sprite3Status"></span>
+    </p>
+    <div id="sprite3Costume"></div>
 
     <hr>
 
