@@ -244,3 +244,209 @@ Blockly.scratchBlocksUtils.duplicateAndDragCallback = function(oldBlock, event) 
     }, 0);
   };
 };
+
+/**
+ * Collect a block and everything that physically belongs to it as one unit: its
+ * input/statement-nested children (recursively, including the next chains inside
+ * statement bodies), but NOT the block's own next statement (the sibling block
+ * below it on the stack).  Used so a box-selected block drags/duplicates exactly
+ * that block and its contents — not the unselected blocks beneath it (2026-10-17).
+ * @param {!Blockly.Block} block Block to start from.
+ * @param {!Set<!Blockly.Block>} set Set to add the unit's blocks to.
+ * @param {boolean} followNext Whether to also follow this block's next connection
+ *     (true for blocks reached through an input/statement so a statement body's
+ *     own continuation stays attached; false for the top selected block so its
+ *     below-sibling is excluded).
+ * @private
+ */
+Blockly.scratchBlocksUtils.collectUnit_ = function(block, set, followNext) {
+  if (!block || set.has(block)) {
+    return;
+  }
+  set.add(block);
+  for (var i = 0, input; input = block.inputList[i]; i++) {
+    if (input.connection) {
+      var child = input.connection.targetBlock();
+      if (child) {
+        Blockly.scratchBlocksUtils.collectUnit_(child, set, true);
+      }
+    }
+  }
+  if (followNext && block.nextConnection) {
+    var next = block.nextConnection.targetBlock();
+    if (next) {
+      Blockly.scratchBlocksUtils.collectUnit_(next, set, true);
+    }
+  }
+};
+
+/**
+ * Remove every unselected block from a serialized block tree, in place, so a
+ * duplicate matches the box selection exactly.  After Blockly.Xml.blockToDom
+ * the XML still holds every block connected below/inside `head`; a box-select
+ * gap (a deselected block between two selected stacked blocks, or a C block
+ * kept while a block inside its body is deselected) would otherwise leak into
+ * the copy.  The next / value / statement connections are all pruned:
+ *   - a SHADOW child always travels with its container (it is the block's own
+ *     default filler, never a separate selection unit), and is kept untouched;
+ *   - a REAL child that was selected is kept and recursed into;
+ *   - a REAL child that was not selected is dropped (it is copied by its own
+ *     root fragment when it was selected) (2026-10-18).
+ * @param {!Element} xml The <block>/<shadow> element to prune.
+ * @param {!Set<string>} selectionIds The ids of the selected blocks.
+ * @private
+ */
+Blockly.scratchBlocksUtils.pruneUnselected_ = function(xml, selectionIds) {
+  var toRemove = [];
+  for (var i = 0; i < xml.childNodes.length; i++) {
+    var child = xml.childNodes[i];
+    if (child.nodeType !== 1) {
+      continue;
+    }
+    var tag = child.tagName.toLowerCase();
+    if (tag !== 'next' && tag !== 'value' && tag !== 'statement') {
+      continue;
+    }
+    // The single attached block/shadow inside the connection element.
+    var blockChild = null;
+    for (var j = 0; j < child.childNodes.length; j++) {
+      if (child.childNodes[j].nodeType === 1) {
+        blockChild = child.childNodes[j];
+        break;
+      }
+    }
+    if (!blockChild) {
+      continue;  // empty connection: leave it be
+    }
+    if (blockChild.tagName.toLowerCase() === 'shadow') {
+      continue;  // a shadow is the container's own filler: always keep
+    }
+    var childId = blockChild.getAttribute('id');
+    if (selectionIds.has(childId)) {
+      Blockly.scratchBlocksUtils.pruneUnselected_(blockChild, selectionIds);
+    } else {
+      toRemove.push(child);  // unselected real block: drop it from this copy
+    }
+  }
+  for (var k = 0; k < toRemove.length; k++) {
+    xml.removeChild(toRemove[k]);
+  }
+};
+
+/**
+ * Count the box-selected blocks the way the "Delete X Blocks" / "Duplicate X
+ * Blocks" labels should: a value-input reporter (an operator plugged into a
+ * socket) is an argument, not a standalone block, so it is not counted
+ * (2026-10-18).  A block with an output connection is exactly such a reporter;
+ * hat / stack / C / statement blocks have none, so they are the "积木" that
+ * matter.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The box-selected blocks.
+ * @return {number} The number of blocks without an output connection.
+ * @package
+ */
+Blockly.scratchBlocksUtils.countSelectionBlocks = function(blocks) {
+  var count = 0;
+  for (var i = 0, block; block = blocks[i]; i++) {
+    if (!block.outputConnection) {
+      count++;
+    }
+  }
+  return count;
+};
+
+/**
+ * Creates a callback for the "duplicate selection" context menu option.  Every
+ * block in the box selection is duplicated (each top-level fragment as a whole
+ * stack), and the copies are attached to the mouse and dragged together, exactly
+ * like duplicateAndDragCallback but for the whole selection.  Clicking the mouse
+ * releases the new dragging blocks.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The box-selected blocks.
+ * @param {!Event} event Event that caused the context menu to open.
+ * @return {Function} A callback that duplicates the blocks and starts a drag.
+ * @package
+ */
+Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback =
+    function(blocks, event) {
+  var isMouseEvent = Blockly.Touch.getTouchIdentifierFromEvent(event) === 'mouse';
+  return function(e) {
+    // Give the context menu a chance to close.
+    setTimeout(function() {
+      if (!blocks.length) {
+        return;
+      }
+      var ws = blocks[0].workspace;
+      // The minimal set of fragments to copy: a block whose parent is also in the
+      // selection (a stack predecessor, or an input/statement container) is part
+      // of that parent's fragment, so only copy blocks with no selected parent.
+      var selectionSet = new Set(blocks);
+      var roots = blocks.filter(function(b) {
+        var parent = b.getParent();
+        return !parent || !selectionSet.has(parent);
+      });
+      // Ids of the selected blocks, for quick membership tests against the
+      // serialized XML (which carries block ids as strings, 2026-10-18).
+      var selectionIds = new Set();
+      selectionSet.forEach(function(b) {
+        selectionIds.add(b.id);
+      });
+
+      // The target workspace would normally resize during domToBlock, which leads
+      // to weird jumps.  Resizing is enabled again when the drag ends.
+      ws.setResizesEnabled(false);
+      Blockly.Events.disable();
+      var newRoots = [];
+      try {
+        // One copy per root.  blockToDom serialises everything below `head`, so
+        // prune every unselected block from the connection subtree (next / value
+        // / statement) before rebuilding: a box-select gap — a deselected block
+        // between two selected stacked blocks, or a C block kept while a block
+        // inside its body is deselected — must not leak into the copy (2026-10-18).
+        for (var j = 0; j < roots.length; j++) {
+          var head = roots[j];
+          var xml = Blockly.Xml.blockToDom(head);
+          Blockly.scratchBlocksUtils.pruneUnselected_(xml, selectionIds);
+          var newBlock = Blockly.Xml.domToBlock(xml, ws);
+          // Scratch-specific: give shadow dom new IDs to prevent duplicating on
+          // paste.
+          Blockly.scratchBlocksUtils.changeObscuredShadowIds(newBlock);
+          var oldPos = head.getRelativeToSurfaceXY();
+          newBlock.moveBy(oldPos.x, oldPos.y);
+          newRoots.push(newBlock);
+        }
+      } finally {
+        Blockly.Events.enable();
+      }
+      if (Blockly.Events.isEnabled()) {
+        for (var k = 0; k < newRoots.length; k++) {
+          Blockly.Events.fire(new Blockly.Events.BlockCreate(newRoots[k]));
+        }
+      }
+
+      if (isMouseEvent) {
+        // e is not a real mouseEvent/touchEvent/pointerEvent.  It's an event
+        // created by the context menu and has the coordinates of the mouse click
+        // that opened the context menu.
+        var fakeEvent = {
+          clientX: event.clientX,
+          clientY: event.clientY,
+          type: 'mousedown',
+          preventDefault: function() {
+            e.preventDefault();
+          },
+          stopPropagation: function() {
+            e.stopPropagation();
+          },
+          target: e.target
+        };
+        ws.startDragWithFakeEventForBlocks(fakeEvent, newRoots);
+      } else {
+        // Touch has no cursor to follow, so just place the copies offset and
+        // re-enable resizing.
+        for (var t = 0; t < newRoots.length; t++) {
+          newRoots[t].moveBy(ws.RTL ? -100 : 100, 100);
+        }
+        ws.setResizesEnabled(true);
+      }
+    }, 0);
+  };
+};

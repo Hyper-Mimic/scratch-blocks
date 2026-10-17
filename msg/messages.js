@@ -298,6 +298,7 @@ Blockly.Msg.CATEGORY_MYBLOCKS = 'My Blocks';
 
 // Context menus
 Blockly.Msg.DUPLICATE = 'Duplicate';
+Blockly.Msg.DUPLICATE_X_BLOCKS = 'Duplicate %1 Blocks';
 Blockly.Msg.DELETE = 'Delete';
 Blockly.Msg.ADD_COMMENT = 'Add Comment';
 Blockly.Msg.REMOVE_COMMENT = 'Remove Comment';

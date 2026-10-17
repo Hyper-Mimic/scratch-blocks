@@ -237,6 +237,7 @@
     "CATEGORY_VARIABLES": "Variables",
     "CATEGORY_MYBLOCKS": "My Blocks",
     "DUPLICATE": "Duplicate",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
     "DELETE": "Delete",
     "ADD_COMMENT": "Add Comment",
     "REMOVE_COMMENT": "Remove Comment",

@@ -243,6 +243,7 @@ Blockly.Msg["CATEGORY_OPERATORS"] = "Operators";
 Blockly.Msg["CATEGORY_VARIABLES"] = "Variables";
 Blockly.Msg["CATEGORY_MYBLOCKS"] = "My Blocks";
 Blockly.Msg["DUPLICATE"] = "Duplicate";
+Blockly.Msg["DUPLICATE_X_BLOCKS"] = "Duplicate %1 Blocks";
 Blockly.Msg["DELETE"] = "Delete";
 Blockly.Msg["ADD_COMMENT"] = "Add Comment";
 Blockly.Msg["REMOVE_COMMENT"] = "Remove Comment";

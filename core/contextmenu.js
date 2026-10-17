@@ -287,6 +287,100 @@ Blockly.ContextMenu.blockDuplicateOption = function(block, event) {
 };
 
 /**
+ * Make a context menu option for duplicating a box selection of blocks and
+ * attaching the copies to the mouse pointer (they follow the cursor like a
+ * normal block duplicate).
+ * @param {!Array<!Blockly.BlockSvg>} blocks The box-selected blocks.
+ * @param {!Event} event Event that caused the context menu to open.
+ * @return {!Object} A menu option, containing text, enabled, and a callback.
+ * @package
+ */
+Blockly.ContextMenu.selectionDuplicateOption = function(blocks, event) {
+  var dupCount = Blockly.scratchBlocksUtils.countSelectionBlocks(blocks);
+  var dupText = dupCount == 1 ? Blockly.Msg.DUPLICATE :
+      (Blockly.Msg.DUPLICATE_X_BLOCKS || (Blockly.Msg.DUPLICATE + ' %1'))
+          .replace('%1', String(dupCount));
+  return {
+    text: dupText,
+    enabled: true,
+    callback:
+        Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback(blocks,
+            event)
+  };
+};
+
+/**
+ * Make a context menu option for deleting a box selection of blocks.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The box-selected blocks.
+ * @return {!Object} A menu option, containing text, enabled, and a callback.
+ * @package
+ */
+Blockly.ContextMenu.selectionDeleteOption = function(blocks) {
+  var count = Blockly.scratchBlocksUtils.countSelectionBlocks(blocks);
+  return {
+    text: count == 1 ? Blockly.Msg.DELETE_BLOCK :
+        Blockly.Msg.DELETE_X_BLOCKS.replace('%1', String(count)),
+    enabled: true,
+    callback: function() {
+      var ws = blocks[0].workspace;
+      Blockly.Events.setGroup(true);
+      try {
+        var selectionSet = new Set(blocks);
+        // A box-select gap means some selected blocks hang off other selected
+        // blocks through a next / value / statement connection whose far end is
+        // NOT selected.  Detach every such unselected block first, so disposing a
+        // selected block leaves the unselected one behind instead of dragging it
+        // into the delete (2026-10-18 fix): e.g. a C block kept but a block inside
+        // its body deselected — deleting the C block must not delete the body
+        // block.  A shadow input is the container's own filler and dies with it,
+        // so it is left attached (2026-10-18).
+        blocks.forEach(function(b) {
+          if (!selectionSet.has(b)) {
+            return;
+          }
+          // Detach an unselected next sibling so it is not deleted with this
+          // block.
+          if (b.nextConnection && b.nextConnection.targetConnection &&
+              !selectionSet.has(b.nextConnection.targetBlock())) {
+            b.nextConnection.disconnect();
+          }
+          // Detach unselected value/statement children so they survive the
+          // delete (shadows stay — they belong to the disposed container).
+          for (var i = 0, input; input = b.inputList[i]; i++) {
+            if (input.connection) {
+              var child = input.connection.targetBlock();
+              if (child && !child.isShadow() && !selectionSet.has(child)) {
+                input.connection.disconnect();
+              }
+            }
+          }
+        });
+        // Dispose only selected blocks with no selected parent; a selected block
+        // whose parent is also selected rides along with that parent (disposing it
+        // directly would double-dispose).  Unselected descendants were detached
+        // above and now stay as top-level orphans.
+        blocks.forEach(function(b) {
+          if (!selectionSet.has(b)) {
+            return;
+          }
+          var parent = b.getParent();
+          if (parent && selectionSet.has(parent)) {
+            return;
+          }
+          b.dispose(true, true);
+        });
+      } finally {
+        Blockly.Events.setGroup(false);
+      }
+      // The blocks are gone; drop the now-stale box selection (and its styling).
+      if (ws.clearBoxSelection) {
+        ws.clearBoxSelection();
+      }
+    }
+  };
+};
+
+/**
  * Make a context menu option for adding or removing comments on the current
  * block.
  * @param {!Blockly.BlockSvg} block The block where the right-click originated.
