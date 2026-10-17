@@ -390,8 +390,62 @@ Blockly.Css.CONTENT = [
     // 'stroke-width: 3px;',
   '}',
 
+  // Outline highlight on every selected block, regardless of shape.
+  // Restrict to .blocklyBlockBackground so only the block's own main path is
+  // stroked: an input's empty-socket outline path (core/input.js) carries the
+  // bare .blocklyPath class without .blocklyBlockBackground, so it must NOT pick
+  // up the box-select outline. Nested value/statement child blocks keep their
+  // highlight because their main path does carry .blocklyBlockBackground.
+  '.blocklyBoxSelected>.blocklyPath.blocklyBlockBackground {',
+    'stroke: var(--blockly-select-stroke);',
+    'stroke-width: 2px;',
+  '}',
+
+  // Fill highlight: the selected block's OWN fill, darkened, so it reads as a
+  // "pressed/selected" state while keeping its category colour. Direct-child
+  // selector only (svgGroup_ carries .blocklyBoxFill), so a block's interior
+  // nested blocks are NOT recoloured — their own main path is not a direct child
+  // of this group. C / loop headers are now included too: their path frames the
+  // body as a hole, so only the frame tints (WorkspaceSvg.setBoxSelectStyle,
+  // 2026-10-18). Very light blocks (luma > 200, e.g. white input shadows) opt out
+  // in setBoxSelectStyle and keep their original fill, which is what stops the
+  // grey fill that used to appear on input shadows during a rubber-band drag.
+  // The value is published as --blockly-select-fill by BlockSvg.setBoxSelectStyle
+  // / WorkspaceSvg.getBoxSelectColors_.
+  '.blocklyBoxFill>.blocklyPath.blocklyBlockBackground {',
+    'fill: var(--blockly-select-fill);',
+  '}',
+
+  // An empty value-input outline (the notch of an `if` block's empty boolean
+  // socket, core/block_svg.js setBoxSelectStyle paintInputOutline) gets the same
+  // highlight as its holding block while box-selected. The stroke colour is
+  // inherited from the ancestor .blocklyBoxSelected group's
+  // --blockly-select-stroke custom property. stroke-width is forced to 2px with
+  // !important (user request 2026-10-18) so the selected empty-socket border is
+  // never overridden by other styling.
+  '.blocklyBoxInputOutline {',
+    'stroke: var(--blockly-select-stroke) !important;',
+    'stroke-width: 2px !important;',
+  '}',
+
+  // NOTE: do NOT add a descendant ".blocklyBoxSelected .blocklyBlockBackground"
+  // rule here. In this fork each block's svg group is nested inside its parent
+  // block group, so a descendant selector would also match the (still
+  // unselected) nested blocks sitting inside a selected C / loop block, and the
+  // --blockly-select-stroke custom property inherited from the ancestor
+  // .blocklyBoxSelected group would recolor their borders. The selected block's
+  // own path already carries blocklyBlockBackground and is covered by the
+  // direct-child .blocklyBoxSelected>.blocklyPath rule above.
+
   '.blocklySelected>.blocklyPathLight {',
     'display: none;',
+  '}',
+
+  '.blocklyBoxSelectRect {',
+    'fill: rgba(76, 151, 255, 0.2);',
+    'stroke: #4c97ff;',
+    'stroke-width: 1px;',
+    'pointer-events: none;',
   '}',
 
   '.blocklyDraggable {',

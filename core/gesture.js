@@ -236,6 +236,64 @@ Blockly.Gesture = function(e, creatorWorkspace) {
    * @private
    */
   this.shouldDuplicateOnDrag_ = false;
+
+  /**
+   * Whether Ctrl (or Cmd on Mac, where Ctrl+click is a right-click) was held
+   * when the gesture started.  Captured once at mouse down so releasing the
+   * key mid-drag does not change what the gesture is.
+   * @type {boolean}
+   * @private
+   */
+  this.ctrlHeld_ = false;
+
+  /**
+   * Whether the gesture is a Ctrl+drag box selection on the workspace.
+   * @type {boolean}
+   * @private
+   */
+  this.isBoxSelecting_ = false;
+
+  /**
+   * Whether the gesture is a Ctrl+drag of the current box selection.
+   * @type {boolean}
+   * @private
+   */
+  this.isBoxDragging_ = false;
+
+  /**
+   * The selection rectangle element, while a box selection is in progress.
+   * @type {Element}
+   * @private
+   */
+  this.boxSelectRect_ = null;
+
+  /**
+   * Box selection start position, in workspace units.
+   * @type {goog.math.Coordinate}
+   * @private
+   */
+  this.boxSelectStart_ = null;
+
+  /**
+   * Top-level blocks being moved by a box drag, and their positions at drag
+   * start, in workspace units.
+   * @type {!Array.<!Blockly.BlockSvg>}
+   * @private
+   */
+  this.boxDragBlocks_ = null;
+
+  /**
+   * @type {!Array.<!goog.math.Coordinate>}
+   * @private
+   */
+  this.boxDragOrigins_ = null;
+
+  /**
+   * Accumulated drag offset of a box drag, in workspace units.
+   * @type {goog.math.Coordinate}
+   * @private
+   */
+  this.boxDragTotal_ = null;
 };
 
 /**
@@ -274,6 +332,17 @@ Blockly.Gesture.prototype.dispose = function() {
     this.bubbleDragger_.dispose();
     this.bubbleDragger_ = null;
   }
+  // A gesture can be disposed mid-box-select (e.g. an input steals focus);
+  // never leave the rectangle behind in the DOM.
+  if (this.boxSelectRect_) {
+    goog.dom.removeNode(this.boxSelectRect_);
+    this.boxSelectRect_ = null;
+  }
+  this.isBoxSelecting_ = false;
+  this.isBoxDragging_ = false;
+  this.boxDragBlocks_ = null;
+  this.boxDragOrigins_ = null;
+  this.boxDragTotal_ = null;
 };
 
 /**
@@ -337,6 +406,11 @@ Blockly.Gesture.prototype.updateIsDraggingFromFlyout_ = function() {
       this.flyout_.isDragTowardWorkspace(this.currentDragDeltaXY_)) {
     this.startWorkspace_ = this.flyout_.targetWorkspace_;
     this.startWorkspace_.updateScreenCalculationsIfScrolled();
+    // Pulling a fresh block out of the flyout starts a new interaction, so drop
+    // any box selection that was sitting on the workspace (2026-10-17).
+    if (this.startWorkspace_.clearBoxSelection) {
+      this.startWorkspace_.clearBoxSelection();
+    }
     // Start the event group now, so that the same event group is used for block
     // creation and block dragging.
     if (!Blockly.Events.getGroup()) {
@@ -439,6 +513,11 @@ Blockly.Gesture.prototype.updateIsDragging_ = function() {
   if (this.updateIsDraggingBubble_()) {
     return;
   }
+  // Then check for a Ctrl+drag box selection, or a Ctrl+drag of the current
+  // box selection.  Both take priority over block and workspace drags.
+  if (this.updateBoxGesture_()) {
+    return;
+  }
   // Then check if it was a block drag.
   if (this.updateIsDraggingBlock_()) {
     return;
@@ -474,6 +553,537 @@ Blockly.Gesture.prototype.startDraggingBubble_ = function() {
   this.bubbleDragger_.dragBubble(this.mostRecentEvent_,
       this.currentDragDeltaXY_);
 };
+
+/* Begin box selection (Ctrl+drag) gesture handling.  See
+ * Blockly.WorkspaceSvg.prototype.getBoxSelection for the selection state. */
+
+/**
+ * Update this gesture to record whether it is a Ctrl+drag box selection or a
+ * Ctrl+drag of the current box selection.  This function should be called on a
+ * mouse/touch move event the first time the drag radius is exceeded.  It
+ * should be called no more than once per gesture.
+ * @return {boolean} true if a box gesture was started.
+ * @private
+ */
+Blockly.Gesture.prototype.updateBoxGesture_ = function() {
+  if (!this.ctrlHeld_ || this.flyout_ || !this.startWorkspace_ ||
+      !this.startWorkspace_.options.hasBoxSelect) {
+    return false;
+  }
+  if (this.targetBlock_) {
+    // Ctrl+drag starting on an already-selected block moves the selection.
+    // Ctrl+drag on an unselected block falls through to a normal block drag.
+    if (this.startWorkspace_.isBlockBoxSelected(this.targetBlock_)) {
+      return this.startBoxDrag_();
+    }
+    return false;
+  }
+  // Ctrl+drag on empty workspace draws the selection rectangle.
+  return this.startBoxSelect_();
+};
+
+/**
+ * Convert a mouse event's client coordinates into workspace units on the
+ * gesture's start workspace.  The block canvas carries the workspace
+ * translate+scale transform, so the inverse of its CTM maps screen pixels
+ * straight to workspace units.
+ * @param {!Event} e A mouse or touch event with clientX/clientY.
+ * @return {!goog.math.Coordinate} Position in workspace coordinates.
+ * @private
+ */
+Blockly.Gesture.prototype.eventToWorkspaceUnits_ = function(e) {
+  var ws = this.startWorkspace_;
+  // Step 1: client coords -> parent-svg viewport coords (mouseToSvg falls back
+  // to the svg's inverse screen CTM, which includes the svg's document
+  // offset). Step 2: viewport -> canvas user space = workspace units. Same
+  // two-step the zoom path uses (workspace_svg.js onMouseWheel_ + zoom).
+  var svgXY = Blockly.utils.mouseToSvg(e, ws.getParentSvg());
+  return svgXY.matrixTransform(ws.getCanvas().getCTM().inverse());
+};
+
+/**
+ * Start a box selection: create the selection rectangle inside the block
+ * canvas, so it inherits the canvas transform (workspace coordinates).
+ * @return {boolean} True, always.
+ * @private
+ */
+Blockly.Gesture.prototype.startBoxSelect_ = function() {
+  this.isBoxSelecting_ = true;
+  this.boxSelectStart_ = this.eventToWorkspaceUnits_(this.mostRecentEvent_);
+  this.boxSelectRect_ = Blockly.utils.createSvgElement('rect',
+      {
+        'class': 'blocklyBoxSelectRect',
+        'x': this.boxSelectStart_.x,
+        'y': this.boxSelectStart_.y,
+        'width': 0,
+        'height': 0,
+        // Keep the outline one pixel wide at any zoom level.
+        'vector-effect': 'non-scaling-stroke'
+      },
+      this.startWorkspace_.getCanvas());
+  return true;
+};
+
+/**
+ * Update the selection rectangle and re-run the hit test for the current drag
+ * position.  Rectangles come from cached block state, so this is
+ * O(top blocks + blocks inside touched stacks) per move with no forced
+ * layout.  The hit test is per block, not per stack: a rectangle covering
+ * part of a stack selects only the blocks it actually touches.  The precise
+ * test uses each block's SVG outline (see
+ * Blockly.BlockSvg.intersectsWorkspaceRect), so space beside a C shape or a
+ * hat's overhang is not a hit even though the bounding box overlaps.
+ * @param {!Event} e The most recent mouse or touch event.
+ * @private
+ */
+Blockly.Gesture.prototype.updateBoxSelect_ = function(e) {
+  var ws = this.startWorkspace_;
+  var start = this.boxSelectStart_;
+  var current = this.eventToWorkspaceUnits_(e);
+  var x = Math.min(start.x, current.x);
+  var y = Math.min(start.y, current.y);
+  var width = Math.abs(current.x - start.x);
+  var height = Math.abs(current.y - start.y);
+  var rect = this.boxSelectRect_;
+  if (rect) {
+    rect.setAttribute('x', x);
+    rect.setAttribute('y', y);
+    rect.setAttribute('width', width);
+    rect.setAttribute('height', height);
+  }
+  var hits = [];
+  var topBlocks = ws.getTopBlocks(false);
+  for (var i = 0; i < topBlocks.length; i++) {
+    var root = topBlocks[i];
+    if (!root.getSvgRoot()) {
+      continue;
+    }
+    // Coarse test on the stack bounding box first, then a per-block test on
+    // each block's own rectangle (width/height are cached render metrics).
+    var bounds = root.getBoundingRectangle();
+    if (!(x < bounds.bottomRight.x && bounds.topLeft.x < x + width &&
+        y < bounds.bottomRight.y && bounds.topLeft.y < y + height)) {
+      continue;
+    }
+    var stack = root.getDescendants(false);
+    for (var j = 0; j < stack.length; j++) {
+      var block = stack[j];
+      if (!block.getSvgRoot() || !block.isBoxSelectable()) {
+        continue;
+      }
+      var xy = block.getRelativeToSurfaceXY();
+      if (x < xy.x + block.width && xy.x < x + width &&
+          y < xy.y + block.height && xy.y < y + height &&
+          block.intersectsWorkspaceRect(x, y, width, height)) {
+        hits.push(block);
+      }
+    }
+  }
+  // A container whose marquee overlap lies entirely inside its children's
+  // areas yields to those children (see filterContainerHits_): marqueeing a
+  // C block's body — or a reporter inside a socket — selects those blocks
+  // alone instead of pulling the whole container into the selection
+  // (2026-10-18).
+  var kept = this.filterContainerHits_(hits, x, y, width, height);
+  ws.setBoxSelection(kept);
+};
+
+/**
+ * Remove from the box-selection hit list every container block that the
+ * marquee only touches through the areas occupied by its nested children
+ * (a C shape's cavity, a value socket).  The inside of a C shape is part of
+ * the container's collision shape, so a rectangle over a C block's body —
+ * or over a reporter in a socket — would always hit the container too and
+ * drag its whole contents into the selection.  See
+ * containerTouchedOnlyThroughChildren_ for when the container yields.
+ * @param {!Array.<!Blockly.BlockSvg>} hits The blocks hit by the marquee.
+ * @param {number} rx Marquee left edge, workspace units.
+ * @param {number} ry Marquee top edge, workspace units.
+ * @param {number} rw Marquee width, workspace units.
+ * @param {number} rh Marquee height, workspace units.
+ * @return {!Array.<!Blockly.BlockSvg>} The filtered hit list.
+ * @private
+ */
+Blockly.Gesture.prototype.filterContainerHits_ = function(hits, rx, ry, rw,
+    rh) {
+  if (!hits.length) {
+    return hits;
+  }
+  var hitSet = new Set(hits);
+  var kept = [];
+  for (var i = 0; i < hits.length; i++) {
+    if (!this.containerTouchedOnlyThroughChildren_(hits[i], hitSet, rx, ry,
+        rw, rh)) {
+      kept.push(hits[i]);
+    }
+  }
+  return kept;
+};
+
+/**
+ * Whether a hit block is overlapped by the marquee exclusively through the
+ * areas occupied by its nested children, so it must yield to them.  The
+ * container yields when both hold:
+ *  1. at least one real (non-shadow) nested child of it is itself hit, and
+ *  2. every sampled point of the marquee that lies inside the container's
+ *     collision shape also lies inside one of the child zones — the marquee
+ *     never reached the container's own shell (header, walls, bottom bar).
+ * A statement child's zone is the container's full-width band from that
+ * child's top down to the container's bottom (a body block is flush with
+ * the cavity's left wall, and the cavity's empty space to its right and
+ * below belongs to the child side); a value child's zone is its socket
+ * outline (which fills the socket hole even around a smaller reporter).
+ * Boxing only a container's header still selects the whole container, and
+ * boxing a shadow field alone keeps the container too — a shadow is not a
+ * real child (2026-10-18).
+ * @param {!Blockly.BlockSvg} block The hit container block.
+ * @param {!Set.<!Blockly.BlockSvg>} hitSet All blocks hit by the marquee.
+ * @param {number} rx Marquee left edge, workspace units.
+ * @param {number} ry Marquee top edge, workspace units.
+ * @param {number} rw Marquee width, workspace units.
+ * @param {number} rh Marquee height, workspace units.
+ * @return {boolean} True if the container must yield to its children.
+ * @private
+ */
+Blockly.Gesture.prototype.containerTouchedOnlyThroughChildren_ = function(
+    block, hitSet, rx, ry, rw, rh) {
+  var blockXY = block.getRelativeToSurfaceXY();
+  var blockRight = blockXY.x + block.width;
+  var blockBottom = blockXY.y + block.height;
+  // Pass 1: collect the child zones and look for a hit real child.
+  var zones = [];
+  var hasRealHitChild = false;
+  var walk = function(b, statementSide) {
+    for (var i = 0, input; input = b.inputList[i]; i++) {
+      if (!input.connection) {
+        continue;
+      }
+      var child = input.connection.targetBlock();
+      if (!child) {
+        continue;
+      }
+      if (input.type === Blockly.NEXT_STATEMENT) {
+        var cxy = child.getRelativeToSurfaceXY();
+        zones.push({left: blockXY.x, right: blockRight,
+            top: cxy.y, bottom: blockBottom});
+        if (!child.isShadow() && hitSet.has(child)) {
+          hasRealHitChild = true;
+        }
+        walk(child, true);
+      } else {
+        // Value socket: use the socket outline when it exists (it fills the
+        // socket hole even around a smaller reporter), else the child box.
+        // The zone extends ~10px past the socket: a box-select drag can only
+        // start on empty canvas, so the rectangle over a socket reporter
+        // inevitably grazes the row around it — the graze must not count as
+        // touching the container's shell (2026-10-18).
+        var zone = null;
+        if (input.outlinePath) {
+          try {
+            var bbox = input.outlinePath.getBBox();
+            zone = {left: bbox.x + blockXY.x - 10,
+                right: bbox.x + bbox.width + blockXY.x + 10,
+                top: bbox.y + blockXY.y - 10,
+                bottom: bbox.y + bbox.height + blockXY.y + 10};
+          } catch (e) {
+            zone = null;  // outline not measurable yet: fall back to child box
+          }
+        }
+        if (!zone) {
+          var vxy = child.getRelativeToSurfaceXY();
+          zone = {left: vxy.x - 10, right: vxy.x + child.width + 10,
+              top: vxy.y - 10, bottom: vxy.y + child.height + 10};
+        }
+        zones.push(zone);
+        if (!child.isShadow() && hitSet.has(child)) {
+          hasRealHitChild = true;
+        }
+        walk(child, false);
+      }
+    }
+    if (b === block) {
+      return;  // the container's own next chain lies outside it
+    }
+    var next = b.nextConnection && b.nextConnection.targetBlock();
+    if (next && statementSide) {
+      var nxy = next.getRelativeToSurfaceXY();
+      zones.push({left: blockXY.x, right: blockRight,
+          top: nxy.y, bottom: blockBottom});
+      if (!next.isShadow() && hitSet.has(next)) {
+        hasRealHitChild = true;
+      }
+      walk(next, true);
+    }
+  };
+  walk(block, false);
+  if (!zones.length || !hasRealHitChild) {
+    return false;
+  }
+  // Pass 2: sample the marquee's overlap with the container's bounding box;
+  // any sample on the container's own shape outside every child zone means
+  // the marquee genuinely touched the container.
+  var bounds = block.getBoundingRectangle();
+  var left = Math.max(rx, bounds.topLeft.x);
+  var right = Math.min(rx + rw, bounds.bottomRight.x);
+  var top = Math.max(ry, bounds.topLeft.y);
+  var bottom = Math.min(ry + rh, bounds.bottomRight.y);
+  if (left >= right || top >= bottom) {
+    return false;
+  }
+  var polygons = block.getCollisionPolygons_();
+  if (!polygons.length) {
+    return false;
+  }
+  var nx = Math.min(24, Math.max(1, Math.ceil((right - left) / 6)));
+  var ny = Math.min(24, Math.max(1, Math.ceil((bottom - top) / 6)));
+  for (var ix = 0; ix <= nx; ix++) {
+    var px = left + (right - left) * ix / nx;
+    for (var iy = 0; iy <= ny; iy++) {
+      var py = top + (bottom - top) * iy / ny;
+      var onShape = false;
+      for (var p = 0; p < polygons.length; p++) {
+        if (Blockly.BlockSvg.pointInPolygon_(px, py, polygons[p],
+            blockXY.x, blockXY.y)) {
+          onShape = true;
+          break;
+        }
+      }
+      if (!onShape) {
+        continue;
+      }
+      var inZone = false;
+      for (var z = 0; z < zones.length; z++) {
+        if (px >= zones[z].left && px <= zones[z].right &&
+            py >= zones[z].top && py <= zones[z].bottom) {
+          inZone = true;
+          break;
+        }
+      }
+      if (!inZone) {
+        return false;  // the marquee reached the container's own shell
+      }
+    }
+  }
+  return true;
+};
+
+/**
+ * End a box selection: drop the rectangle and keep the highlighted blocks.
+ * @private
+ */
+Blockly.Gesture.prototype.endBoxSelect_ = function() {
+  if (this.boxSelectRect_) {
+    goog.dom.removeNode(this.boxSelectRect_);
+    this.boxSelectRect_ = null;
+  }
+  this.isBoxSelecting_ = false;
+};
+
+/**
+ * Start dragging the current box selection: every selected block moves by the
+ * same delta.  Unlike a single block drag this moves the blocks in place: no
+ * block drag surface, no connection snapping, no bumping.  The selection
+ * moves rigidly, which is what a group drag means here.
+ *
+ * The drag unit is exactly the box selection: a block only takes its
+ * input-/statement-nested children (everything inside it).  Its trailing
+ * statement chain (the blocks below it on the stack) is taken ONLY when those
+ * blocks were themselves selected; otherwise the unselected block below is
+ * detached and stays put, so dragging one block out of the middle of a stack
+ * tears it out instead of stretching the connections.  The unit is computed by
+ * scratchBlocksUtils.collectUnit_, which follows input/statement nesting (and
+ * the next chains inside statement bodies) but stops at the block's own next
+ * connection (2026-10-17).
+ * @return {boolean} True if the drag started, false if nothing is draggable.
+ * @private
+ */
+Blockly.Gesture.prototype.startBoxDrag_ = function() {
+  var ws = this.startWorkspace_;
+  var moveSet = new Set();
+  ws.getBoxSelection().forEach(function(block) {
+    if (block.workspace !== ws || !block.isMovable() || !block.getSvgRoot()) {
+      return;
+    }
+    // A selected block drags as a unit with everything nested inside it (input
+    // values and statement bodies, including the next chains within those
+    // bodies), but NOT the blocks below it on its own next connection — those
+    // only come along if they were selected too (2026-10-17: previously a
+    // getDescendants + getNextBlock loop pulled the whole stack below a single
+    // selected block along for the ride).
+    Blockly.scratchBlocksUtils.collectUnit_(block, moveSet, false);
+  });
+  if (!moveSet.size) {
+    return false;
+  }
+  // Detach anything whose parent stays behind, mirroring BlockDragger's unplug
+  // for a single dragged block.  Also detach a trailing next block that was NOT
+  // selected, so dragging one block out of the middle of a stack tears it out
+  // instead of stretching the connections.  The next block is left attached when
+  // it is itself part of the unit (e.g. a statement body continuation), so the
+  // inside of a C-block still moves as one piece.
+  if (!Blockly.Events.getGroup()) {
+    Blockly.Events.setGroup(true);
+  }
+  moveSet.forEach(function(block) {
+    var parent = block.getParent();
+    if (parent && !moveSet.has(parent)) {
+      block.unplug();
+    }
+    if (block.nextConnection && block.nextConnection.targetConnection &&
+        !moveSet.has(block.nextConnection.targetBlock())) {
+      block.nextConnection.disconnect();
+    }
+  });
+  this.boxDragBlocks_ = [];
+  var self = this;
+  moveSet.forEach(function(block) {
+    self.boxDragBlocks_.push(block);
+  });
+  this.boxDragOrigins_ = this.boxDragBlocks_.map(function(block) {
+    return block.getRelativeToSurfaceXY();
+  });
+  this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
+  this.isBoxDragging_ = true;
+  // Suppress per-move workspace resizes, same as BlockDragger.startBlockDrag.
+  ws.setResizesEnabled(false);
+  return true;
+};
+
+/**
+ * Move the box-selected stacks by the current drag delta.
+ * @param {!goog.math.Coordinate} currentDragDeltaXY Total drag delta in pixel
+ *     units, relative to the gesture start.
+ * @private
+ */
+Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
+  var ws = this.startWorkspace_;
+  // Pixel delta -> workspace units (the canvas transform scales by ws.scale).
+  var total = new goog.math.Coordinate(
+      currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
+  var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
+  this.boxDragTotal_ = total;
+  for (var i = 0; i < this.boxDragBlocks_.length; i++) {
+    var block = this.boxDragBlocks_[i];
+    // In this fork every block's svgGroup is nested inside its parent's group, so
+    // a nested child is positioned RELATIVE to its parent, not in absolute
+    // surface coordinates. Translating a child by its absolute surface origin
+    // therefore double-applies the parent transform and throws it off (blocks
+    // "jump" / 错位). Only top-level (parentless) blocks get their transform set;
+    // nested children ride along with the parent group, and moveConnections_
+    // below recurses into them to keep their connection DB in sync. This mirrors
+    // BlockDragger, which only translates root blocks (2026-10-17).
+    if (block.getParent()) {
+      continue;
+    }
+    var origin = this.boxDragOrigins_[i];
+    // translate() takes an absolute position and fires no events;
+    // moveConnections_ keeps the connection database in sync with the delta.
+    block.translate(origin.x + total.x, origin.y + total.y);
+    block.moveConnections_(delta.x, delta.y);
+    // The stack moved: drop its cached rects so viewport culling stays correct.
+    ws.invalidateContentBounds_(block.getRootBlock());
+  }
+  // Keep culling fresh while the selection moves, same as BlockDragger
+  // (PATCH 8 in BlockDragger.dragBlock).
+  ws.queueIntersectionCheck();
+};
+
+/**
+ * End a box drag: fire one move event per moved top-level block so the VM and
+ * the undo stack see the new positions, then re-enable workspace resizes.
+ * @private
+ */
+Blockly.Gesture.prototype.endBoxDrag_ = function() {
+  var ws = this.startWorkspace_;
+  if (Blockly.Events.isEnabled()) {
+    for (var i = 0; i < this.boxDragBlocks_.length; i++) {
+      var block = this.boxDragBlocks_[i];
+      // Only top-level blocks carry a meaningful workspace position; nested
+      // blocks moved with their parent (same as a single block drag's
+      // fireMoveEvent_, which reports the dragged root only).
+      if (block.getParent()) {
+        continue;
+      }
+      var event = new Blockly.Events.BlockMove(block);
+      event.oldCoordinate = this.boxDragOrigins_[i];
+      event.recordNew();
+      Blockly.Events.fire(event);
+    }
+  }
+  for (var j = 0; j < this.boxDragBlocks_.length; j++) {
+    if (!this.boxDragBlocks_[j].getParent()) {
+      ws.resizeContents(this.boxDragBlocks_[j].getRootBlock());
+    }
+  }
+  this.boxDragBlocks_ = null;
+  this.boxDragOrigins_ = null;
+  this.boxDragTotal_ = null;
+  this.isBoxDragging_ = false;
+  ws.setResizesEnabled(true);
+  if (Blockly.Events.getGroup()) {
+    Blockly.Events.setGroup(false);
+  }
+  ws.queueIntersectionCheck();
+};
+
+/**
+ * Toggle a single block in the box selection (Ctrl+click). Selection is per
+ * block, not per stack: clicking one block of a stack toggles just that
+ * block. Its nested contents (reporters, shadows, statement stacks) come
+ * along, exactly as in the rubber-band path. Dragging the selection later
+ * still moves following statements and nested blocks along (see
+ * startBoxDrag_).
+ * @param {!Blockly.BlockSvg} block The block to toggle.
+ * @private
+ */
+Blockly.Gesture.prototype.toggleBoxSelection_ = function(block) {
+  var ws = this.startWorkspace_;
+  var selection = ws.getBoxSelection();
+  var exp = ws.expandBoxSelectionNested_([block]);
+  var blocks = exp.blocks;
+  if (selection.has(block)) {
+    selection.delete(block);
+    for (var i = 0; i < blocks.length; i++) {
+      selection.delete(blocks[i]);
+      blocks[i].setBoxSelectStyle(false);
+    }
+    if (Blockly.selected === block) {
+      block.unselect();
+    }
+  } else {
+    selection.add(block);
+    // Colour each selected block from its OWN colour source (sourceOf), exactly
+    // like setBoxSelection: a nested reporter / shadow inherits the colour of the
+    // block that holds it, while a C block's contents keep their own colours (see
+    // expandBoxSelectionNested_ and the 2026-10-17 report). A single-click toggle
+    // must NOT paint every nested block in the toggled block's colour — that is
+    // what made a reporter nested in `move N steps` come out blue instead of its
+    // own green.
+    var sourceColors = new Map();
+    exp.sourceOf.forEach(function(source, blk) {
+      if (sourceColors.has(source)) {
+        return;
+      }
+      sourceColors.set(source, ws.getBoxSelectColors_(source));
+    });
+    for (var j = 0; j < blocks.length; j++) {
+      selection.add(blocks[j]);
+      var src = exp.sourceOf.get(blocks[j]);
+      if (src && src !== blocks[j]) {
+        // A nested value/statement child inherits only its CONTAINER'S BORDER
+        // colour; it keeps its OWN fill untouched (2026-10-18). Pass null for the
+        // fill so BlockSvg.setBoxSelectStyle paints the outline alone.
+        var colours = sourceColors.get(src);
+        blocks[j].setBoxSelectStyle(true, colours ? colours.stroke : undefined, null);
+      } else {
+        // Directly-toggled block: darkened own fill + brighter own-colour border.
+        blocks[j].setBoxSelectStyle(true);
+      }
+    }
+  }
+};
+
+/* End box selection gesture handling. */
 /**
  * Start a gesture: update the workspace to indicate that a gesture is in
  * progress and bind mousemove and mouseup handlers.
@@ -516,6 +1126,16 @@ Blockly.Gesture.prototype.doStart = function(e) {
 
   this.mouseDownXY_ = new goog.math.Coordinate(e.clientX, e.clientY);
   this.currentDragDeltaXY_ = new goog.math.Coordinate(0, 0);
+  // Ctrl (or Cmd on Mac) decides between a box gesture and the normal
+  // block/workspace gestures; capture it once, at mouse down.
+  this.ctrlHeld_ = !!(e.ctrlKey || e.metaKey);
+  // A plain mousedown on a block starts a fresh single-block interaction, so
+  // any existing box selection is dropped.  Ctrl+drag starting on a selected
+  // block keeps the selection and drags it instead (see updateBoxGesture_).
+  if (this.targetBlock_ && !this.ctrlHeld_ && this.startWorkspace_ &&
+      this.startWorkspace_.clearBoxSelection) {
+    this.startWorkspace_.clearBoxSelection();
+  }
 
   this.bindMouseEvents(e);
 };
@@ -550,6 +1170,10 @@ Blockly.Gesture.prototype.handleMove = function(e) {
         this.mostRecentEvent_, this.currentDragDeltaXY_)) {
       stopPropagation = false;
     }
+  } else if (this.isBoxSelecting_) {
+    this.updateBoxSelect_(this.mostRecentEvent_);
+  } else if (this.isBoxDragging_) {
+    this.updateBoxDrag_(this.currentDragDeltaXY_);
   } else if (this.isDraggingBubble_) {
     this.bubbleDragger_.dragBubble(this.mostRecentEvent_,
         this.currentDragDeltaXY_);
@@ -583,6 +1207,10 @@ Blockly.Gesture.prototype.handleUp = function(e) {
     this.bubbleDragger_.endBubbleDrag(e, this.currentDragDeltaXY_);
   } else if (this.isDraggingBlock_) {
     this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
+  } else if (this.isBoxSelecting_) {
+    this.endBoxSelect_();
+  } else if (this.isBoxDragging_) {
+    this.endBoxDrag_();
   } else if (this.isDraggingWorkspace_) {
     this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
   } else if (this.isBubbleClick_()) {
@@ -621,6 +1249,10 @@ Blockly.Gesture.prototype.cancel = function() {
   } else if (this.isDraggingBlock_) {
     this.blockDragger_.endBlockDrag(this.mostRecentEvent_,
         this.currentDragDeltaXY_);
+  } else if (this.isBoxSelecting_) {
+    this.endBoxSelect_();
+  } else if (this.isBoxDragging_) {
+    this.endBoxDrag_();
   } else if (this.isDraggingWorkspace_) {
     this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
   }
@@ -747,6 +1379,13 @@ Blockly.Gesture.prototype.doBlockClick_ = function() {
       newBlock.scheduleSnapAndBump();
     }
   } else {
+    // Ctrl+click toggles the clicked block in the box selection instead of
+    // running the normal click path.
+    if (this.ctrlHeld_ && this.startWorkspace_.options.hasBoxSelect) {
+      this.toggleBoxSelection_(this.startBlock_);
+      this.bringBlockToFront_();
+      return;
+    }
     // A field is being edited if either the WidgetDiv or DropDownDiv is currently open.
     // If a field is being edited, don't fire any click events.
     var fieldEditing = Blockly.WidgetDiv.isVisible() || Blockly.DropDownDiv.isVisible();
@@ -771,6 +1410,10 @@ Blockly.Gesture.prototype.doBlockClick_ = function() {
 Blockly.Gesture.prototype.doWorkspaceClick_ = function() {
   if (Blockly.selected) {
     Blockly.selected.unselect();
+  }
+  // Clicking empty workspace drops the box selection too.
+  if (this.startWorkspace_.clearBoxSelection) {
+    this.startWorkspace_.clearBoxSelection();
   }
 };
 
@@ -939,7 +1582,7 @@ Blockly.Gesture.prototype.isWorkspaceClick_ = function() {
  */
 Blockly.Gesture.prototype.isDragging = function() {
   return this.isDraggingWorkspace_ || this.isDraggingBlock_ ||
-      this.isDraggingBubble_;
+      this.isDraggingBubble_ || this.isBoxSelecting_ || this.isBoxDragging_;
 };
 
 /**
@@ -971,6 +1614,37 @@ Blockly.Gesture.prototype.forceStartBlockDrag = function(fakeEvent, block) {
   this.isDraggingBlock_ = true;
   this.hasExceededDragRadius_ = true;
   this.startDraggingBlock_();
+};
+
+/**
+ * Force a rigid, multi-block drag to start without clicking and dragging the
+ * blocks themselves.  Used to attach duplicated box-selection blocks to the
+ * mouse pointer (see scratchBlocksUtils.duplicateSelectionAndDragCallback).
+ * Mirrors forceStartBlockDrag but drags a set of top-level blocks together,
+ * exactly like a Ctrl+drag box-selection move (updateBoxDrag_ / endBoxDrag_).
+ * @param {!Object} fakeEvent An object with the properties needed to start a
+ *     drag, including clientX and clientY.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The top-level blocks to drag.
+ * @package
+ */
+Blockly.Gesture.prototype.forceStartBoxDrag = function(fakeEvent, blocks) {
+  this.handleBlockStart(fakeEvent, blocks[0]);
+  this.handleWsStart(fakeEvent, blocks[0].workspace);
+  var ws = blocks[0].workspace;
+  this.boxDragBlocks_ = blocks.slice();
+  this.boxDragOrigins_ = blocks.map(function(b) {
+    return b.getRelativeToSurfaceXY();
+  });
+  this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
+  this.isBoxDragging_ = true;
+  // Force the drag radius to already be exceeded so updateFromEvent_ never calls
+  // updateIsDragging_. Otherwise the first real mouse move past the radius would
+  // run updateIsDragging_ -> updateIsDraggingBlock_ and create a BlockDragger for
+  // targetBlock_ (blocks[0]) alone, leaving every other copied block frozen in
+  // place while only that one follows the cursor. forceStartBlockDrag sets the
+  // same flag for the same reason (2026-10-17).
+  this.hasExceededDragRadius_ = true;
+  ws.setResizesEnabled(false);
 };
 
 /**

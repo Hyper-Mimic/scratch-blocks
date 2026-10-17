@@ -729,8 +729,16 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
   }
   // Save the current block in a variable for use in closures.
   var block = this;
+  var ws = this.workspace;
   var menuOptions = [];
-  if (this.isDeletable() && this.isMovable() && !block.isInFlyout) {
+  // Right-clicking a box-selected block offers to delete or duplicate the whole
+  // selection, rather than just this one block (2026-10-17).
+  if (ws.isBlockBoxSelected && ws.isBlockBoxSelected(this) &&
+      ws.getBoxSelection().size) {
+    var selection = Array.from(ws.getBoxSelection());
+    menuOptions.push(Blockly.ContextMenu.selectionDuplicateOption(selection, e));
+    menuOptions.push(Blockly.ContextMenu.selectionDeleteOption(selection));
+  } else if (this.isDeletable() && this.isMovable() && !block.isInFlyout) {
     menuOptions.push(
         Blockly.ContextMenu.blockDuplicateOption(block, e));
     if (this.isEditable() && this.workspace.options.comments) {
@@ -1087,6 +1095,645 @@ Blockly.BlockSvg.prototype.addSelect = function() {
 Blockly.BlockSvg.prototype.removeSelect = function() {
   Blockly.utils.removeClass(
       /** @type {!Element} */ (this.svgGroup_),  'blocklySelected');
+};
+
+/**
+ * Whether the given workspace-aligned rectangle intersects this block's
+ * actual SVG shape rather than its bounding box. A rectangle drawn over the
+ * empty space beside a C shape, a hat's overhang or a round reporter's
+ * bounding-box corners does not select the block; a rectangle clipping any
+ * part of the drawn shape does. Used by the box-selection hit test
+ * (core/gesture.js updateBoxSelect_).
+ * @param {number} x Rectangle left edge, workspace units.
+ * @param {number} y Rectangle top edge, workspace units.
+ * @param {number} width Rectangle width, workspace units.
+ * @param {number} height Rectangle height, workspace units.
+ * @return {boolean} True if the rectangle intersects the block's shape.
+ */
+Blockly.BlockSvg.prototype.intersectsWorkspaceRect = function(x, y, width,
+    height) {
+  var polygons = this.getCollisionPolygons_();
+  if (!polygons.length) {
+    return false;
+  }
+  var xy = this.getRelativeToSurfaceXY();
+  for (var p = 0; p < polygons.length; p++) {
+    if (Blockly.BlockSvg.rectIntersectsPolygon_(x, y, width, height,
+        polygons[p], xy.x, xy.y)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ * This block's collision outline as a list of polygons in block-local
+ * coordinates: the main path plus every input outline (the inside of a C
+ * shape counts as part of the block). Parsed from the rendered SVG paths and
+ * cached; the cache is dropped on every render.
+ *
+ * Only SVG path elements are considered. HTML overlays that sit on top of a
+ * block are NOT part of the hit area: the inline text editor's input
+ * (FieldTextInput's .blocklyHtmlInput inside the WidgetDiv) and any other
+ * non-SVG element are excluded, so a rectangle overlapping only such an
+ * overlay does not select the block.
+ * @return {!Array.<!Array.<!Array.<number>>>} Polygons as [x, y] vertex lists.
+ * @private
+ */
+Blockly.BlockSvg.prototype.getCollisionPolygons_ = function() {
+  if (this.collisionPolygons_) {
+    return this.collisionPolygons_;
+  }
+  var polygons = [];
+  if (this.svgPath_) {
+    var main = Blockly.BlockSvg.parsePathToPolygon_(
+        this.svgPath_.getAttribute('d'));
+    if (main.length > 2) {
+      polygons.push(main);
+    }
+  }
+  for (var i = 0; i < this.inputList.length; i++) {
+    var outline = this.inputList[i].outlinePath;
+    if (outline) {
+      var poly = Blockly.BlockSvg.parsePathToPolygon_(
+          outline.getAttribute('d'));
+      if (poly.length > 2) {
+        polygons.push(poly);
+      }
+    }
+  }
+  this.collisionPolygons_ = polygons;
+  return polygons;
+};
+
+/**
+ * Parse an SVG path data string into a polygon vertex list. Arcs are sampled
+ * into line segments (about 10 degrees per segment), so rounded corners,
+ * notches and hat overhangs keep their shape to within a couple of workspace
+ * units. Handles the M/L/H/V/Q/C/A/Z commands scratch-blocks emits (cubic
+ * Béziers via 'C'/'c' are used for hat tops and connection notches).
+ * @param {string} d The path data.
+ * @return {!Array.<!Array.<number>>} [[x, y], ...] vertices, path-local.
+ * @private
+ */
+Blockly.BlockSvg.parsePathToPolygon_ = function(d) {
+  var points = [];
+  if (!d) {
+    return points;
+  }
+  var tokens = d.match(/[MLAQZHVmlaqzhvCc]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g);
+  if (!tokens) {
+    return points;
+  }
+  var cmd = 'M';
+  var cx = 0;
+  var cy = 0;
+  var sx = 0;
+  var sy = 0;
+  var i = 0;
+  var num = function() {
+    return parseFloat(tokens[i++]);
+  };
+  while (i < tokens.length) {
+    var t = tokens[i];
+    if (/[MLAQZHVmlaqzhvCc]/.test(t)) {
+      cmd = t;
+      i++;
+    }
+    var abs = cmd === cmd.toUpperCase();
+    switch (cmd.toUpperCase()) {
+      case 'M': {
+        var mx = num();
+        var my = num();
+        if (!abs) {
+          mx += cx;
+          my += cy;
+        }
+        cx = mx;
+        cy = my;
+        sx = mx;
+        sy = my;
+        points.push([cx, cy]);
+        // After a moveto, further coordinate pairs are implicit linetos.
+        cmd = abs ? 'L' : 'l';
+        break;
+      }
+      case 'L': {
+        var lx = num();
+        var ly = num();
+        if (!abs) {
+          lx += cx;
+          ly += cy;
+        }
+        cx = lx;
+        cy = ly;
+        points.push([cx, cy]);
+        break;
+      }
+      case 'H': {
+        var hx = num();
+        if (!abs) {
+          hx += cx;
+        }
+        cx = hx;
+        points.push([cx, cy]);
+        break;
+      }
+      case 'V': {
+        var vy2 = num();
+        if (!abs) {
+          vy2 += cy;
+        }
+        cy = vy2;
+        points.push([cx, cy]);
+        break;
+      }
+      case 'Q': {
+        var qx = num();
+        var qy = num();
+        var qx2 = num();
+        var qy2 = num();
+        if (!abs) {
+          qx += cx;
+          qy += cy;
+          qx2 += cx;
+          qy2 += cy;
+        }
+        for (var s = 1; s <= 6; s++) {
+          var u = s / 6;
+          points.push([
+            (1 - u) * (1 - u) * cx + 2 * (1 - u) * u * qx + u * u * qx2,
+            (1 - u) * (1 - u) * cy + 2 * (1 - u) * u * qy + u * u * qy2
+          ]);
+        }
+        cx = qx2;
+        cy = qy2;
+        break;
+      }
+      case 'C': {
+        var c1x = num();
+        var c1y = num();
+        var c2x = num();
+        var c2y = num();
+        var ex = num();
+        var ey = num();
+        if (!abs) {
+          c1x += cx; c1y += cy;
+          c2x += cx; c2y += cy;
+          ex += cx; ey += cy;
+        }
+        // Sample the cubic Bézier (scratch-blocks draws hat tops and connection
+        // notches with 'c', which is otherwise dropped by this parser).
+        for (var s = 1; s <= 8; s++) {
+          var u = s / 8;
+          var mu = 1 - u;
+          points.push([
+            mu * mu * mu * cx + 3 * mu * mu * u * c1x +
+                3 * mu * u * u * c2x + u * u * u * ex,
+            mu * mu * mu * cy + 3 * mu * mu * u * c1y +
+                3 * mu * u * u * c2y + u * u * u * ey
+          ]);
+        }
+        cx = ex;
+        cy = ey;
+        break;
+      }
+      case 'A': {
+        var rx = num();
+        var ry = num();
+        var rot = num() * Math.PI / 180;
+        var largeArc = num();
+        var sweep = num();
+        var ax = num();
+        var ay = num();
+        if (!abs) {
+          ax += cx;
+          ay += cy;
+        }
+        Blockly.BlockSvg.arcToPolyline_(cx, cy, rx, ry, rot, largeArc, sweep,
+            ax, ay, points);
+        cx = ax;
+        cy = ay;
+        break;
+      }
+      case 'Z': {
+        cx = sx;
+        cy = sy;
+        break;
+      }
+      default:
+        // Unknown command: cannot recover the argument count reliably.
+        i = tokens.length;
+        break;
+    }
+  }
+  return points;
+};
+
+/**
+ * Append a polyline sampling of an SVG elliptical arc (endpoint parameter
+ * form) to a vertex list. Standard endpoint-to-center conversion, sampled at
+ * about 10 degrees per segment.
+ * @param {number} x1 Start point x.
+ * @param {number} y1 Start point y.
+ * @param {number} rx Ellipse radius x.
+ * @param {number} ry Ellipse radius y.
+ * @param {number} phi Ellipse rotation, radians.
+ * @param {number} largeArc Large-arc flag (0 or 1).
+ * @param {number} sweep Sweep flag (0 or 1).
+ * @param {number} x2 End point x.
+ * @param {number} y2 End point y.
+ * @param {!Array.<!Array.<number>>} points Vertex list to append to.
+ * @private
+ */
+Blockly.BlockSvg.arcToPolyline_ = function(x1, y1, rx, ry, phi, largeArc,
+    sweep, x2, y2, points) {
+  if (rx === 0 || ry === 0) {
+    points.push([x2, y2]);
+    return;
+  }
+  var cosPhi = Math.cos(phi);
+  var sinPhi = Math.sin(phi);
+  var dx = (x1 - x2) / 2;
+  var dy = (y1 - y2) / 2;
+  var x1p = cosPhi * dx + sinPhi * dy;
+  var y1p = -sinPhi * dx + cosPhi * dy;
+  rx = Math.abs(rx);
+  ry = Math.abs(ry);
+  var lambda = x1p * x1p / (rx * rx) + y1p * y1p / (ry * ry);
+  if (lambda > 1) {
+    var radiusScale = Math.sqrt(lambda);
+    rx *= radiusScale;
+    ry *= radiusScale;
+  }
+  var sign = (largeArc !== sweep) ? 1 : -1;
+  var num = rx * rx * ry * ry - rx * rx * y1p * y1p - ry * ry * x1p * x1p;
+  var den = rx * rx * y1p * y1p + ry * ry * x1p * x1p;
+  var co = den === 0 ? 0 : sign * Math.sqrt(Math.max(0, num / den));
+  var cxp = co * (rx * y1p / ry);
+  var cyp = co * (-ry * x1p / rx);
+  var centerX = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2;
+  var centerY = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2;
+  var ux = (x1p - cxp) / rx;
+  var uy = (y1p - cyp) / ry;
+  var vx = (-x1p - cxp) / rx;
+  var vy = (-y1p - cyp) / ry;
+  var startAngle = Math.atan2(uy, ux);
+  var endAngle = Math.atan2(vy, vx);
+  var delta = endAngle - startAngle;
+  if (sweep && delta < 0) {
+    delta += 2 * Math.PI;
+  } else if (!sweep && delta > 0) {
+    delta -= 2 * Math.PI;
+  }
+  var steps = Math.max(2, Math.ceil(Math.abs(delta) / (Math.PI / 18)));
+  for (var s = 1; s <= steps; s++) {
+    var angle = startAngle + delta * s / steps;
+    points.push([
+      centerX + rx * Math.cos(angle) * cosPhi -
+          ry * Math.sin(angle) * sinPhi,
+      centerY + rx * Math.cos(angle) * sinPhi +
+          ry * Math.sin(angle) * cosPhi
+    ]);
+  }
+};
+
+/**
+ * Whether an axis-aligned rectangle intersects a polygon. Correct for
+ * concave polygons: they are separated exactly when no edge crosses and
+ * neither contains a vertex of the other.
+ * @param {number} rx Rectangle left edge.
+ * @param {number} ry Rectangle top edge.
+ * @param {number} rw Rectangle width.
+ * @param {number} rh Rectangle height.
+ * @param {!Array.<!Array.<number>>} poly Polygon vertices, path-local.
+ * @param {number} dx Polygon x offset (block position, workspace units).
+ * @param {number} dy Polygon y offset (block position, workspace units).
+ * @return {boolean} True if the rectangle and polygon intersect.
+ * @private
+ */
+Blockly.BlockSvg.rectIntersectsPolygon_ = function(rx, ry, rw, rh, poly, dx,
+    dy) {
+  var n = poly.length;
+  if (n < 3) {
+    return false;
+  }
+  var rLeft = rx;
+  var rRight = rx + rw;
+  var rTop = ry;
+  var rBottom = ry + rh;
+  var i;
+  var px;
+  var py;
+  // 1. Any polygon vertex inside the rectangle?
+  for (i = 0; i < n; i++) {
+    px = poly[i][0] + dx;
+    py = poly[i][1] + dy;
+    if (px >= rLeft && px <= rRight && py >= rTop && py <= rBottom) {
+      return true;
+    }
+  }
+  // 2. Any rectangle corner inside the polygon?
+  var corners = [[rLeft, rTop], [rRight, rTop], [rRight, rBottom],
+      [rLeft, rBottom]];
+  for (i = 0; i < 4; i++) {
+    if (Blockly.BlockSvg.pointInPolygon_(corners[i][0], corners[i][1], poly,
+        dx, dy)) {
+      return true;
+    }
+  }
+  // 3. Any polygon edge crossing a rectangle edge?
+  var rectEdges = [[rLeft, rTop, rRight, rTop], [rRight, rTop, rRight, rBottom],
+      [rRight, rBottom, rLeft, rBottom], [rLeft, rBottom, rLeft, rTop]];
+  for (i = 0; i < n; i++) {
+    var j = (i + 1) % n;
+    var ax = poly[i][0] + dx;
+    var ay = poly[i][1] + dy;
+    var bx = poly[j][0] + dx;
+    var by = poly[j][1] + dy;
+    for (var e = 0; e < 4; e++) {
+      if (Blockly.BlockSvg.segmentsIntersect_(ax, ay, bx, by,
+          rectEdges[e][0], rectEdges[e][1], rectEdges[e][2],
+          rectEdges[e][3])) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+/**
+ * Whether a point lies inside a polygon (ray casting).
+ * @param {number} px Point x, workspace units.
+ * @param {number} py Point y, workspace units.
+ * @param {!Array.<!Array.<number>>} poly Polygon vertices, path-local.
+ * @param {number} dx Polygon x offset.
+ * @param {number} dy Polygon y offset.
+ * @return {boolean} True if the point is inside.
+ * @private
+ */
+Blockly.BlockSvg.pointInPolygon_ = function(px, py, poly, dx, dy) {
+  var inside = false;
+  var n = poly.length;
+  for (var i = 0, j = n - 1; i < n; j = i++) {
+    var xi = poly[i][0] + dx;
+    var yi = poly[i][1] + dy;
+    var xj = poly[j][0] + dx;
+    var yj = poly[j][1] + dy;
+    if ((yi > py) !== (yj > py) &&
+        px < (xj - xi) * (py - yi) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+};
+
+/**
+ * Whether line segment AB intersects line segment CD (strict crossing).
+ * @return {boolean} True if the segments cross.
+ * @private
+ */
+Blockly.BlockSvg.segmentsIntersect_ = function(ax, ay, bx, by, cx, cy, dx,
+    dy) {
+  var cross = function(ox, oy, px, py, qx, qy) {
+    return (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+  };
+  var d1 = cross(cx, cy, dx, dy, ax, ay);
+  var d2 = cross(cx, cy, dx, dy, bx, by);
+  var d3 = cross(ax, ay, bx, by, cx, cy);
+  var d4 = cross(ax, ay, bx, by, dx, dy);
+  return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+};
+
+/**
+ * Whether this block is a box-selectable unit. Text input shadows (the
+ * rounded input boxes rendered behind text fields, whose HTML editor is the
+ * .blocklyHtmlInput element) are NOT: they are input affordances rather than
+ * blocks, so neither the rubber band nor the nested-content expansion
+ * selects or highlights them. Dragging is unaffected: the group drag unit
+ * still covers every descendant so an input box moves with its host.
+ * @return {boolean} True if this block may be box-selected.
+ */
+Blockly.BlockSvg.prototype.isBoxSelectable = function() {
+  return !(this.isShadow() && this.type === 'text');
+};
+
+/**
+ * Turn the box-selection highlight on or off for this block. The highlight is
+ * derived from the block's own primary colour and published as CSS custom
+ * properties consumed by the .blocklyBoxSelected / .blocklyBoxFill rules in
+ * css.js: the fill is a darkened version of the block's own fill, and the stroke
+ * is a brighter tint of the same hue, so every selected block keeps its category
+ * identity while reading as "pressed". Only the box selection
+ * (Ctrl+drag rubber band / Ctrl+click, see core/gesture.js) uses this; plain
+ * clicks, connection highlighting and block dragging keep the neutral
+ * blocklySelected styling.
+ * @param {boolean} on True to highlight, false to restore.
+ */
+Blockly.BlockSvg.prototype.setBoxSelectStyle = function(on, opt_strokeRgb,
+    opt_fillRgb) {
+  var svgRoot = this.svgGroup_;
+  if (!svgRoot || !svgRoot.style) {
+    return;
+  }
+  // Field boxes (number/text inputs and dropdowns) keep a border whose colour is
+  // set inline on the <rect> by the field itself (e.g. a dropdown's
+  // getColourTertiary() stroke, see core/field_dropdown.js). Overpainting it for
+  // the highlight and then blindly removeAttribute('stroke') would erase that
+  // original border for good, so we capture the field's own stroke on the first
+  // paint and restore it exactly on clear. data-boxsel-orig stores the original
+  // value; the empty string is the sentinel for "had no inline stroke".
+  var paintFieldStroke = function(field, strokeHex) {
+    if (!field.box_) {
+      return;
+    }
+    // Capture the field's OWN stroke + width on first paint (2026-10-18): a
+    // box-selected block with a field should outline that field at width 2, so we
+    // record the original width and restore it exactly on clear. data-boxsel-orig
+    // is the sentinel for "already captured".
+    if (field.box_.getAttribute('data-boxsel-orig') === null) {
+      var origStroke = field.box_.getAttribute('stroke');
+      field.box_.setAttribute('data-boxsel-orig', origStroke === null ? '' : origStroke);
+      var origWidth = field.box_.getAttribute('stroke-width');
+      field.box_.setAttribute('data-boxsel-width-orig', origWidth === null ? '' : origWidth);
+    }
+    field.box_.setAttribute('stroke', strokeHex);
+    field.box_.setAttribute('stroke-width', '2');
+  };
+  var clearFieldStroke = function(field) {
+    if (!field.box_) {
+      return;
+    }
+    var origStroke = field.box_.getAttribute('data-boxsel-orig');
+    if (origStroke === null) {
+      return;
+    }
+    if (origStroke === '') {
+      field.box_.removeAttribute('stroke');
+    } else {
+      field.box_.setAttribute('stroke', origStroke);
+    }
+    var origWidth = field.box_.getAttribute('data-boxsel-width-orig');
+    if (origWidth === null) {
+      // Not captured — nothing to undo.
+    } else if (origWidth === '') {
+      field.box_.removeAttribute('stroke-width');
+    } else {
+      field.box_.setAttribute('stroke-width', origWidth);
+    }
+    field.box_.removeAttribute('data-boxsel-orig');
+    field.box_.removeAttribute('data-boxsel-width-orig');
+  };
+  // An empty value input (e.g. the boolean CONDITION socket of an `if` block,
+  // shown as a notch outline) renders an `input.outlinePath` whose fill is the
+  // block's tertiary colour. When the holding block is box-selected, give that
+  // empty socket the SAME outline + fill as the block so the whole selection
+  // (including the gap where a block would plug in) reads as one highlighted
+  // unit (user request 2026-10-18). Only actually-empty sockets are painted, and
+  // the original stroke / fill are captured on first paint and restored on clear.
+  var paintInputOutline = function(input, strokeHex, fillHex) {
+    if (!input.outlinePath || !input.connection ||
+        input.connection.targetConnection) {
+      return;  // No outline, or the socket is filled.
+    }
+    if (input.outlinePath.getAttribute('data-boxsel-orig') === null) {
+      var origStroke = input.outlinePath.getAttribute('stroke');
+      input.outlinePath.setAttribute('data-boxsel-orig', origStroke === null ? '' : origStroke);
+      var origFill = input.outlinePath.getAttribute('fill');
+      input.outlinePath.setAttribute('data-boxsel-fill-orig', origFill === null ? '' : origFill);
+    }
+    if (strokeHex) {
+      input.outlinePath.setAttribute('stroke', strokeHex);
+      input.outlinePath.setAttribute('stroke-width', '2');
+    }
+    if (fillHex) {
+      input.outlinePath.setAttribute('fill', fillHex);
+    }
+    // Tag it so the .blocklyBoxInputOutline CSS rule (.core/css.js) applies the
+    // !important 2px border while selected.
+    Blockly.utils.addClass(
+        /** @type {!Element} */ (input.outlinePath), 'blocklyBoxInputOutline');
+  };
+  var clearInputOutline = function(input) {
+    if (!input.outlinePath) {
+      return;
+    }
+    var origStroke = input.outlinePath.getAttribute('data-boxsel-orig');
+    if (origStroke === null) {
+      return;
+    }
+    if (origStroke === '') {
+      input.outlinePath.removeAttribute('stroke');
+    } else {
+      input.outlinePath.setAttribute('stroke', origStroke);
+    }
+    input.outlinePath.removeAttribute('stroke-width');
+    var origFill = input.outlinePath.getAttribute('data-boxsel-fill-orig');
+    if (origFill === '') {
+      input.outlinePath.removeAttribute('fill');
+    } else if (origFill !== null) {
+      input.outlinePath.setAttribute('fill', origFill);
+    }
+    input.outlinePath.removeAttribute('data-boxsel-orig');
+    input.outlinePath.removeAttribute('data-boxsel-fill-orig');
+    Blockly.utils.removeClass(
+        /** @type {!Element} */ (input.outlinePath), 'blocklyBoxInputOutline');
+  };
+  if (!on) {
+    Blockly.utils.removeClass(
+        /** @type {!Element} */ (svgRoot), 'blocklyBoxSelected');
+    Blockly.utils.removeClass(
+        /** @type {!Element} */ (svgRoot), 'blocklyBoxFill');
+    svgRoot.style.removeProperty('--blockly-select-fill');
+    svgRoot.style.removeProperty('--blockly-select-stroke');
+    // Drop any field-box stroke painted while selected, restoring the field's
+    // own original border (a dropdown's colourTertiary stroke, etc.).
+    for (var bi = 0; bi < this.inputList.length; bi++) {
+      var fieldRow = this.inputList[bi].fieldRow;
+      for (var bj = 0; bj < fieldRow.length; bj++) {
+        clearFieldStroke(fieldRow[bj]);
+      }
+      // Also drop any empty-input outline (e.g. an `if` block's empty boolean
+      // socket) painted while selected.
+      clearInputOutline(this.inputList[bi]);
+    }
+    return;
+  }
+  Blockly.utils.addClass(
+      /** @type {!Element} */ (svgRoot), 'blocklyBoxSelected');
+  if (!this.colour_) {
+    return;
+  }
+  var rgb = goog.color.hexToRgb(this.colour_);
+  // A brighter tint of the same hue reads as a highlight on mid/dark blocks,
+  // but white (text input shadows, custom white blocks) lightened is still
+  // white: darken those instead so every selected block keeps a visible
+  // outline.
+  var luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  var strokeRgb = opt_strokeRgb || (luma > 200 ? goog.color.darken(rgb, 0.3) :
+      goog.color.lighten(rgb, 0.4));
+  var strokeHex = goog.color.rgbArrayToHex(strokeRgb);
+  svgRoot.style.setProperty('--blockly-select-stroke', strokeHex);
+  // The highlight FILL colour for this block (null when it opts out, e.g. very
+  // light blocks). Mirrors the logic in the fill section below, computed up front
+  // so the empty-input outlines can share it.
+  var fillHex = null;
+  if (typeof opt_fillRgb !== 'undefined' && opt_fillRgb !== null) {
+    fillHex = goog.color.rgbArrayToHex(opt_fillRgb);
+  } else if (typeof opt_fillRgb === 'undefined' && luma <= 200) {
+    fillHex = goog.color.rgbArrayToHex(goog.color.darken(rgb, 0.2));
+  }
+  // Outline editable field boxes (the number / text input <rect> created in
+  // core/field_textinput.js) with the same colour, so a value-input child's
+  // field border follows the block that holds it instead of staying the default
+  // grey. Only this block's own fields are touched — nested blocks' fields belong
+  // to their own selections, so there is no cross-block colour leak.
+  for (var bi = 0; bi < this.inputList.length; bi++) {
+    var fieldRow = this.inputList[bi].fieldRow;
+    for (var bj = 0; bj < fieldRow.length; bj++) {
+      paintFieldStroke(fieldRow[bj], strokeHex);
+    }
+    // Give this block's empty value inputs (an `if` block's empty boolean
+    // socket, etc.) the same outline + fill as the block itself, so the whole
+    // selection — including the gap where a block would plug in — highlights as
+    // one unit (2026-10-18).
+    paintInputOutline(this.inputList[bi], strokeHex, fillHex);
+  }
+  // Fill highlight: a directly-hit block darkens its OWN fill so it reads as
+  // selected while keeping its category colour. C / loop headers are now included
+  // — their path frames the body as a hole, so the darkened fill only tints the
+  // frame and never covers the still-unselected blocks nested inside (2026-10-18).
+  // Very light blocks (luma > 200: white input shadows, custom-white blocks) opt
+  // out: darkening white reads as grey, not a tint of the block's own colour, so
+  // they keep their original fill and rely on the outline alone. This also kills
+  // the intermittent grey fill seen on input shadows while dragging a rubber band
+  // (a white block momentarily hit on its own would otherwise be filled grey and
+  // then kept grey once it becomes a nested child of a later-hit block).
+  // A nested child (value-input reporter or C-block body block) passes
+  // opt_fillRgb === null ("outline only") so it keeps its OWN fill and never
+  // borrows the container's — see WorkspaceSvg.setBoxSelection /
+  // getBoxSelectColors_ and the 2026-10-18 report.
+  if (typeof opt_fillRgb !== 'undefined') {
+    if (opt_fillRgb === null) {
+      Blockly.utils.removeClass(
+          /** @type {!Element} */ (svgRoot), 'blocklyBoxFill');
+      svgRoot.style.removeProperty('--blockly-select-fill');
+    } else {
+      Blockly.utils.addClass(
+          /** @type {!Element} */ (svgRoot), 'blocklyBoxFill');
+      svgRoot.style.setProperty('--blockly-select-fill',
+          goog.color.rgbArrayToHex(opt_fillRgb));
+    }
+  } else if (luma > 200) {
+    Blockly.utils.removeClass(
+        /** @type {!Element} */ (svgRoot), 'blocklyBoxFill');
+    svgRoot.style.removeProperty('--blockly-select-fill');
+  } else {
+    Blockly.utils.addClass(
+        /** @type {!Element} */ (svgRoot), 'blocklyBoxFill');
+    svgRoot.style.setProperty('--blockly-select-fill',
+        goog.color.rgbArrayToHex(goog.color.darken(rgb, 0.2)));
+  }
 };
 
 /**

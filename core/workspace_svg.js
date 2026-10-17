@@ -2502,6 +2502,275 @@ Blockly.WorkspaceSvg.prototype.setToolboxRefreshEnabled = function(enabled) {
 
 
 /**
+ * Box selection (Ctrl+drag rubber-band, see core/gesture.js).
+ * @return {!Set<!Blockly.BlockSvg>} The live set of selected blocks.
+ *     Mutate it only through setBoxSelection/clearBoxSelection.
+ */
+Blockly.WorkspaceSvg.prototype.getBoxSelection = function() {
+  if (!this.boxSelection_) {
+    this.boxSelection_ = new Set();
+  }
+  return this.boxSelection_;
+};
+
+/**
+ * Expand a list of blocks with the blocks nested inside them. A selected block
+ * is a visual unit, so its nested contents are selected with it whether or not
+ * the selection rectangle touched them. For a C-type block (if / repeat / etc.)
+ * this means every block sitting inside its statement input(s) is selected too,
+ * recursively — boxing the header grabs the whole structure. A block's own
+ * following statements (the chain AFTER the block, outside it) are NOT expanded:
+ * that chain is a separate visual unit and only gets selected when the rectangle
+ * reaches it. Text input shadows are not selectable units (see
+ * BlockSvg.isBoxSelectable) and never join the selection.
+ *
+ * Colour source: each block records, via sourceOf, the block whose box-select
+ * border colour it should use. A directly-hit block keeps its OWN colour. A block
+ * reached through a STATEMENT input (a C block's body) also keeps its OWN colour:
+ * stacked statements are a separate visual category and never borrow the C block's
+ * colour. A block reached through a VALUE input depends on the child, exactly like
+ * the contents of a C block: a REAL reporter block keeps its OWN colour (so e.g.
+ * operator_random in a `move` block's STEPS socket stays green, and operator_random
+ * in a `repeat` block's TIMES socket stays green too — every value-input reporter
+ * decides its own border colour), while a SHADOW input field (a number / text box,
+ * which renders white with no category colour of its own) inherits the holder's
+ * colour so its border matches the container instead of staying grey (2026-10-17,
+ * e.g. a `repeat` block's TIMES "10" box is outlined in the repeat's orange, and a
+ * number nested inside a reporter borrows that reporter's colour). See the
+ * 2026-10-17 report.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The hit-tested blocks.
+ * @return {{blocks: !Array<!Blockly.BlockSvg>,
+ *     sourceOf: !Map<!Blockly.BlockSvg, !Blockly.BlockSvg>}} The blocks plus
+ *     their nested contents and the colour-source map consumed by
+ *     setBoxSelection.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.expandBoxSelectionNested_ = function(blocks) {
+  var self = this;
+  var expanded = [];
+  // sourceOf maps every selected block to the block whose colour it should use.
+  var sourceOf = new Map();
+  var addBlock = function(block, source) {
+    if (sourceOf.has(block)) {
+      return;
+    }
+    sourceOf.set(block, source);
+    expanded.push(block);
+  };
+  // Claim a block's input-connected descendants. `effectiveSource` is the colour
+  // a VALUE-connected child inherits — the block that holds it. The rules:
+  //  - A directly-hit block, and a block reached through a STATEMENT input (a C
+  //    block's body), keep their OWN colour.
+  //  - A REAL value child (a reporter block) keeps its OWN colour — exactly like
+  //    the contents of a C block. operator_random in a `move` block's STEPS socket
+  //    stays green, and operator_random in a `repeat` block's TIMES socket stays
+  //    green too: every value-input reporter decides its own border colour
+  //    (2026-10-17 clarification).
+  //  - A SHADOW value child (a primitive field with no category colour of its own
+  //    — it renders white) inherits the holder's colour, so an input field's
+  //    border matches its container instead of staying grey (2026-10-17, e.g. the
+  //    "10" box of a `repeat` block's TIMES socket is outlined in the repeat's
+  //    orange, and a number nested inside a reporter borrows that reporter's
+  //    colour).
+  //  - `followNext` is false for a directly-hit root: a block's own following
+  //    statement chain (its next connection, outside the block) is a separate
+  //    visual unit and must NOT be pulled in. It is true for any block reached
+  //    THROUGH an input (value or statement), so a C block's whole body — every
+  //    block chained on nextConnection after the first — is selected along with
+  //    it.
+  var walk = function(block, effectiveSource, followNext) {
+    var inputList = block.inputList;
+    for (var k = 0; k < inputList.length; k++) {
+      var input = inputList[k];
+      if (!input.connection) {
+        continue;
+      }
+      var child = input.connection.targetBlock();
+      if (!child) {
+        continue;
+      }
+      if (sourceOf.has(child)) {
+        continue;
+      }
+      var childSource;
+      if (input.type === Blockly.NEXT_STATEMENT) {
+        // Statement child (a C block's body) keeps its OWN colour.
+        childSource = child;
+      } else if (child.isShadow()) {
+        // A shadow field has no category colour of its own (it renders white), so
+        // inherit the holder's colour — otherwise its border is left grey.
+        childSource = effectiveSource;
+      } else {
+        // A real reporter keeps its OWN colour, exactly like the contents of a C
+        // block.
+        childSource = child;
+      }
+      addBlock(child, childSource);
+      walk(child, childSource, true);
+    }
+    // Follow the block's own next connection to chain the rest of this
+    // statement. Only when reached through an input (so a C block's full body is
+    // captured); a directly-hit root's trailing chain stays a separate unit.
+    if (followNext && block.nextConnection) {
+      var next = block.nextConnection.targetBlock();
+      if (next && !sourceOf.has(next)) {
+        addBlock(next, next);
+        walk(next, next, true);
+      }
+    }
+  };
+  // Pass 1: claim every directly-hit REAL block (one with a category colour of
+  // its own) as a root that keeps its own colour + darkened fill. The rubber-band
+  // rect lists EVERY intersecting block — including nested children (see
+  // updateBoxSelect_, which pushes each descendant whose box overlaps). A shadow
+  // value/field child has no colour of its own (it renders white) and must NOT be
+  // claimed here: as a direct hit it would be styled darken(white) -> grey (the
+  // "input edges turn grey" bug, 2026-10-17). Shadows are reached through walk()
+  // from their real parent and borrow that parent's colour, so a whole-stack
+  // rubber band still outlines every input in its container's colour. Every real
+  // block the rect actually covers (the hat, a `move` block, a `repeat` header,
+  // and the blocks inside it) is in `blocks` and is claimed here individually, so
+  // none of them is dropped from the selection (2026-10-17 follow-up).
+  var hitSet = new Set(blocks);
+  for (var i = 0; i < blocks.length; i++) {
+    var block = blocks[i];
+    if (!block || block.workspace !== self || !block.getSvgRoot() ||
+        !block.isBoxSelectable()) {
+      continue;
+    }
+    // A shadow has no colour of its own — let walk() colour it from its holding
+    // block instead of treating it as a direct hit (which would grey it out).
+    if (block.isShadow()) {
+      continue;
+    }
+    if (!sourceOf.has(block)) {
+      addBlock(block, block);
+    }
+  }
+  // Pass 2: expand each hit block's inputs. A directly-hit C block does not
+  // propagate its colour to its inputs (its condition reporter and body reset to
+  // their own colours); a directly-hit non-C block does propagate. A directly-hit
+  // root's own following statement chain is NOT followed (followNext=false); it
+  // is a separate visual unit, selected only when the rectangle reaches it.
+  for (var j = 0; j < blocks.length; j++) {
+    var root = blocks[j];
+    if (!root || root.workspace !== self || !root.getSvgRoot() ||
+        !root.isBoxSelectable()) {
+      continue;
+    }
+    walk(root, root, false);
+  }
+  return { blocks: expanded, sourceOf: sourceOf };
+};
+
+/**
+ * Compute the box-select colours for a block, mirroring the logic in
+ * BlockSvg.setBoxSelectStyle. Used to paint a value-input child (a reporter /
+ * condition) with the colour of the block that holds it, so an input's border
+ * matches its container; a C block's body keeps its own colour. The fill is a
+ * darkened version of the block's own fill (null for very light blocks, which
+ * would otherwise read as grey), and the stroke is a brighter tint of the same
+ * hue (see expandBoxSelectionNested_ and the 2026-10-18 report). C / loop headers
+ * now also return a fill — their path frames the body as a hole so only the frame
+ * tints.
+ * @param {!Blockly.BlockSvg} block The containing block.
+ * @return {?{stroke: !Array<number>, fill: (?Array<number>|null)}} null when the
+ *     block has no colour.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.getBoxSelectColors_ = function(block) {
+  if (!block.colour_) {
+    return null;
+  }
+  var rgb = goog.color.hexToRgb(block.colour_);
+  var luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
+  var stroke = luma > 200 ? goog.color.darken(rgb, 0.3) :
+      goog.color.lighten(rgb, 0.4);
+  // Fill is only consulted for context; nested children always pass null (keep
+  // their own fill — see setBoxSelection), and directly-hit blocks compute their
+  // own fill inside setBoxSelectStyle. Mirror that logic here: very light blocks
+  // skip the fill (would read as grey), everything else uses a darkened version
+  // of its own colour, including C / loop headers (2026-10-18).
+  var fill = luma > 200 ? null : goog.color.darken(rgb, 0.2);
+  return { stroke: stroke, fill: fill };
+};
+
+/**
+ * Replace the box selection with the given blocks. Blocks dropping out of the
+ * selection lose their highlight; blocks entering it gain one. Selection is
+ * per block, so any rendered block of this workspace may be selected (not
+ * just top-level stacks); foreign-workspace and unrendered blocks are ignored.
+ * Nested blocks come along with their host (see expandBoxSelectionNested_).
+ * @param {!Array<!Blockly.BlockSvg>} blocks The blocks to select.
+ */
+Blockly.WorkspaceSvg.prototype.setBoxSelection = function(blocks) {
+  var selection = this.getBoxSelection();
+  var exp = this.expandBoxSelectionNested_(blocks);
+  var next = new Set(exp.blocks);
+  selection.forEach(function(block) {
+    if (!next.has(block) && block.getSvgRoot()) {
+      block.setBoxSelectStyle(false);
+    }
+  });
+  // A nested child (a value-input reporter, or a C-block's body block) inherits
+  // the box-select colours of the block that contains it, so its border matches
+  // the holding block instead of its own category colour. See 2026-10-17 report:
+  // a boxed "move N steps" should outline its numeric input in the same colour
+  // as the move block. Compute each containing block's colours once.
+  var sourceColors = new Map();
+  exp.sourceOf.forEach(function(source, block) {
+    if (sourceColors.has(source)) {
+      return;
+    }
+    sourceColors.set(source, this.getBoxSelectColors_(source));
+  }, this);
+  // Style every block in the new selection, not only the newly-entering ones. A
+  // block can flip between "directly hit" and "nested child" as the rubber band
+  // grows or shrinks, so its fill state must be recomputed each time (a white
+  // block briefly hit on its own would otherwise keep the grey fill it picked up
+  // when it later becomes a nested child). Re-styling an already-selected block
+  // is idempotent; blocks that left the selection were cleared above.
+  next.forEach(function(block) {
+    var source = exp.sourceOf.get(block);
+    if (source && source !== block) {
+      // A nested value/statement child inherits only its CONTAINER'S BORDER
+      // colour (so an input's outline matches the block that holds it); it keeps
+      // its OWN fill untouched (2026-10-18). Pass null for the fill so
+      // BlockSvg.setBoxSelectStyle paints the outline alone and leaves the
+      // child's original fill as-is.
+      var colors = sourceColors.get(source);
+      block.setBoxSelectStyle(true, colors ? colors.stroke : undefined, null);
+    } else {
+      // Directly-hit block: darkened own fill + brighter own-colour border.
+      block.setBoxSelectStyle(true);
+    }
+  });
+  this.boxSelection_ = next;
+};
+
+/**
+ * Whether the given block is part of the box selection.
+ * @param {!Blockly.BlockSvg} block The block to test.
+ * @return {boolean} True if the block is box-selected.
+ */
+Blockly.WorkspaceSvg.prototype.isBlockBoxSelected = function(block) {
+  return this.getBoxSelection().has(block);
+};
+
+/**
+ * Drop the box selection and remove all of its highlights.
+ */
+Blockly.WorkspaceSvg.prototype.clearBoxSelection = function() {
+  var selection = this.getBoxSelection();
+  selection.forEach(function(block) {
+    if (block.getSvgRoot()) {
+      block.setBoxSelectStyle(false);
+    }
+  });
+  selection.clear();
+};
+
+/**
  * Dispose of all blocks in workspace, with an optimization to prevent resizes.
  */
 Blockly.WorkspaceSvg.prototype.clear = function() {
@@ -2511,6 +2780,8 @@ Blockly.WorkspaceSvg.prototype.clear = function() {
   // PATCH 9 (2026-10-10): resizes are suppressed above, so resizeContents() bails
   // out early and never invalidates. Do it explicitly.
   this.invalidateContentBounds_();
+  // The selected blocks are gone; drop the box selection with them.
+  this.clearBoxSelection();
 };
 
 /**
@@ -2656,6 +2927,22 @@ Blockly.WorkspaceSvg.prototype.startDragWithFakeEvent = function(fakeEvent,
   Blockly.Touch.checkTouchIdentifier(fakeEvent);
   var gesture = block.workspace.getGesture(fakeEvent);
   gesture.forceStartBlockDrag(fakeEvent, block);
+};
+
+/**
+ * Like startDragWithFakeEvent, but starts a rigid drag of several top-level
+ * blocks together (used to drag a duplicated box selection).
+ * @param {!Object} fakeEvent An object with the properties needed to start a
+ *     drag, including clientX and clientY.
+ * @param {!Array<!Blockly.BlockSvg>} blocks The top-level blocks to drag.
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.startDragWithFakeEventForBlocks = function(
+    fakeEvent, blocks) {
+  Blockly.Touch.clearTouchIdentifier();
+  Blockly.Touch.checkTouchIdentifier(fakeEvent);
+  var gesture = blocks[0].workspace.getGesture(fakeEvent);
+  gesture.forceStartBoxDrag(fakeEvent, blocks);
 };
 
 /**

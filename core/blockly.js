@@ -196,10 +196,15 @@ Blockly.onKeyDown_ = function(e) {
     return;
   }
   var deleteBlock = false;
+  var deleteBoxSelection = false;
   if (e.keyCode == 27) {
     // Pressing esc closes the context menu and any drop-down
     Blockly.hideChaff();
     Blockly.DropDownDiv.hide();
+    // Esc also drops the box selection.
+    if (Blockly.mainWorkspace.clearBoxSelection) {
+      Blockly.mainWorkspace.clearBoxSelection();
+    }
   } else if (e.keyCode == 8 || e.keyCode == 46) {
     // Delete or backspace.
     // Stop the browser from going back to the previous page.
@@ -210,7 +215,18 @@ Blockly.onKeyDown_ = function(e) {
     if (Blockly.mainWorkspace.isDragging()) {
       return;
     }
-    if (Blockly.selected && Blockly.selected.isDeletable()) {
+    // A box selection takes priority over the single selected block.
+    if (Blockly.mainWorkspace.getBoxSelection) {
+      var boxSelection = Blockly.mainWorkspace.getBoxSelection();
+      if (boxSelection.size) {
+        boxSelection.forEach(function(block) {
+          if (block.isDeletable() && !block.workspace.isFlyout) {
+            deleteBoxSelection = true;
+          }
+        });
+      }
+    }
+    if (!deleteBoxSelection && Blockly.selected && Blockly.selected.isDeletable()) {
       deleteBlock = true;
     }
   } else if (e.altKey || e.ctrlKey || e.metaKey) {
@@ -256,7 +272,26 @@ Blockly.onKeyDown_ = function(e) {
   }
   // Common code for delete and cut.
   // Don't delete in the flyout.
-  if (deleteBlock && !Blockly.selected.workspace.isFlyout) {
+  if (deleteBoxSelection) {
+    // Delete every deletable block of the box selection. Selection is per
+    // block: deleting a block from the middle of a stack heals the gap
+    // (dispose's heal flag), exactly like deleting a single block.
+    var toDelete = [];
+    Blockly.mainWorkspace.getBoxSelection().forEach(function(block) {
+      if (block.isDeletable() && !block.workspace.isFlyout) {
+        toDelete.push(block);
+      }
+    });
+    if (toDelete.length) {
+      Blockly.Events.setGroup(true);
+      Blockly.hideChaff();
+      for (var i = 0; i < toDelete.length; i++) {
+        toDelete[i].dispose(/* heal */ true, true);
+      }
+      Blockly.Events.setGroup(false);
+      Blockly.mainWorkspace.clearBoxSelection();
+    }
+  } else if (deleteBlock && !Blockly.selected.workspace.isFlyout) {
     Blockly.Events.setGroup(true);
     Blockly.hideChaff();
     Blockly.selected.dispose(/* heal */ true, true);

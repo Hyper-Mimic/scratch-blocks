@@ -99,6 +99,10 @@ Blockly.Options = function(options) {
   if (hasScrollbars === undefined) {
     hasScrollbars = hasCategories;
   }
+  // Box selection: hold Ctrl and drag on the workspace to rubber-band select
+  // blocks. Off by default; the feature implementation reads
+  // workspace.options.boxSelect. Forced off in readOnly mode.
+  var hasBoxSelect = !!options['boxSelect'] && !readOnly;
   var hasCss = options['css'];
   if (hasCss === undefined) {
     hasCss = true;
@@ -127,6 +131,7 @@ Blockly.Options = function(options) {
   this.pathToMedia = pathToMedia;
   this.hasCategories = hasCategories;
   this.hasScrollbars = hasScrollbars;
+  this.hasBoxSelect = hasBoxSelect;
   this.hasTrashcan = hasTrashcan;
   this.hasSounds = hasSounds;
   this.hasCss = hasCss;

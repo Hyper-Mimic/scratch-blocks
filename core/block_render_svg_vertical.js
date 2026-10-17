@@ -633,6 +633,9 @@ Blockly.BlockSvg.prototype.getHeightWidth = function() {
 Blockly.BlockSvg.prototype.render = function(opt_bubble) {
   Blockly.Field.startCache();
   this.rendered = true;
+  // The block's outline may have changed shape: drop the cached collision
+  // polygon (see BlockSvg.getCollisionPolygons_).
+  this.collisionPolygons_ = null;
 
   var cursorX = Blockly.BlockSvg.SEP_SPACE_X;
   if (this.RTL) {
