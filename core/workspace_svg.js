@@ -535,6 +535,21 @@ Blockly.WorkspaceSvg.prototype.dispose = function() {
   if (this.currentGesture_) {
     this.currentGesture_.cancel();
   }
+  // Cancel any coalesced wheel frames so a disposed workspace can't fire
+  // them later (same reasoning as WorkspaceDragger.dispose). (2026-10-17)
+  if (window.cancelAnimationFrame) {
+    if (this.wheelRafScheduled_ && this.wheelRafId_) {
+      window.cancelAnimationFrame(this.wheelRafId_);
+    }
+    if (this.zoomRafScheduled_ && this.zoomRafId_) {
+      window.cancelAnimationFrame(this.zoomRafId_);
+    }
+  }
+  this.wheelRafScheduled_ = false;
+  this.wheelRafId_ = null;
+  this.zoomRafScheduled_ = false;
+  this.zoomRafId_ = null;
+  this.pendingZoomDelta_ = 0;
   if (this.intersectionObserver) {
     this.intersectionObserver.dispose();
     this.intersectionObserver = null;
@@ -1502,9 +1517,32 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
     // The vertical scroll distance that corresponds to a click of a zoom button.
     var PIXELS_PER_ZOOM_STEP = 50;
     var delta = -e.deltaY / PIXELS_PER_ZOOM_STEP * multiplier;
-    var position = Blockly.utils.mouseToSvg(e, this.getParentSvg(),
-        this.getInverseScreenCTM());
-    this.zoom(position.x, position.y, delta);
+    // Coalesce wheel/pinch zoom events into one zoom per animation frame.
+    // Every zoom() call runs two getCTM() forced layouts (workspace_svg.js
+    // zoom:1991,2008) plus a full scrollbar resize chain, so a 120 Hz
+    // trackpad burst was paying that per event. Deltas accumulate and the
+    // anchor is the latest cursor position, which is what a continuous
+    // pinch feels like anyway. Mirrors the scroll coalescing below.
+    // (2026-10-17)
+    this.pendingZoomDelta_ = (this.pendingZoomDelta_ || 0) + delta;
+    this.pendingZoomClientX_ = e.clientX;
+    this.pendingZoomClientY_ = e.clientY;
+    if (!this.zoomRafScheduled_) {
+      this.zoomRafScheduled_ = true;
+      var ws = this;
+      this.zoomRafId_ = requestAnimationFrame(function() {
+        ws.zoomRafScheduled_ = false;
+        ws.zoomRafId_ = null;
+        var amount = ws.pendingZoomDelta_ || 0;
+        ws.pendingZoomDelta_ = 0;
+        if (amount) {
+          var position = Blockly.utils.mouseToSvg(
+              {clientX: ws.pendingZoomClientX_, clientY: ws.pendingZoomClientY_},
+              ws.getParentSvg(), ws.getInverseScreenCTM());
+          ws.zoom(position.x, position.y, amount);
+        }
+      });
+    }
   } else {
     // This is a regular mouse wheel event - scroll the workspace
     // First hide the WidgetDiv without animation
@@ -1522,8 +1560,9 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
     if (!this.wheelRafScheduled_) {
       this.wheelRafScheduled_ = true;
       var self = this;
-      requestAnimationFrame(function() {
+      this.wheelRafId_ = requestAnimationFrame(function() {
         self.wheelRafScheduled_ = false;
+        self.wheelRafId_ = null;
         var dx = self.pendingScrollDeltaX_ || 0;
         var dy = self.pendingScrollDeltaY_ || 0;
         self.pendingScrollDeltaX_ = 0;
