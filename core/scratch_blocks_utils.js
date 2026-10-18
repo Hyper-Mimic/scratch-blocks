@@ -390,6 +390,26 @@ Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback =
         selectionIds.add(b.id);
       });
 
+      // Paste position.  A normal right-click Duplicate leaves the copies on top
+      // of the originals and lets the cursor drag them away.  For Ctrl+V we want
+      // the copies to appear at the cursor ("in hand") from the very first frame
+      // instead of jumping out from the original block bodies, so shift the whole
+      // selected cluster by the cursor's offset from the first root's body
+      // (preserving the relative arrangement between fragments, 2026-10-18).
+      var pasteOffsetX = 0, pasteOffsetY = 0;
+      if (event && event.boxPaste && typeof event.clientX === 'number') {
+        try {
+          var svgXY = Blockly.utils.mouseToSvg(event, ws.getParentSvg());
+          var cursorWs = svgXY.matrixTransform(ws.getCanvas().getCTM().inverse());
+          var anchorOld = roots[0].getRelativeToSurfaceXY();
+          pasteOffsetX = cursorWs.x - anchorOld.x;
+          pasteOffsetY = cursorWs.y - anchorOld.y;
+        } catch (err) {
+          pasteOffsetX = 0;
+          pasteOffsetY = 0;
+        }
+      }
+
       // The target workspace would normally resize during domToBlock, which leads
       // to weird jumps.  Resizing is enabled again when the drag ends.
       ws.setResizesEnabled(false);
@@ -410,7 +430,7 @@ Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback =
           // paste.
           Blockly.scratchBlocksUtils.changeObscuredShadowIds(newBlock);
           var oldPos = head.getRelativeToSurfaceXY();
-          newBlock.moveBy(oldPos.x, oldPos.y);
+          newBlock.moveBy(oldPos.x + pasteOffsetX, oldPos.y + pasteOffsetY);
           newRoots.push(newBlock);
         }
       } finally {
