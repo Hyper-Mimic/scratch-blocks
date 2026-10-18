@@ -425,6 +425,17 @@ Blockly.init_ = function(mainWorkspace) {
 Blockly.inject.bindDocumentEvents_ = function() {
   if (!Blockly.documentEventsBound_) {
     Blockly.bindEventWithChecks_(document, 'keydown', null, Blockly.onKeyDown_);
+    // Track the live pointer position so a keyboard-driven box-selection paste
+    // (Ctrl+V) can attach the duplicate to the real cursor instead of (0,0).
+    // Blockly.mouseXY_ is read by Blockly.onKeyDown_ when it synthesises the
+    // mouse event for duplicateSelectionAndDragCallback (2026-10-18).
+    Blockly.mouseXY_ = {x: 0, y: 0};
+    var trackPointer_ = function(e) {
+      Blockly.mouseXY_.x = e.clientX;
+      Blockly.mouseXY_.y = e.clientY;
+    };
+    Blockly.bindEventWithChecks_(document, 'mousemove', null, trackPointer_);
+    Blockly.bindEventWithChecks_(document, 'pointermove', null, trackPointer_);
     // longStop needs to run to stop the context menu from showing up.  It
     // should run regardless of what other touch event handlers have run.
     Blockly.bindEvent_(document, 'touchend', null, Blockly.longStop_);

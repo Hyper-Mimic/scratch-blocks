@@ -234,6 +234,46 @@ Blockly.onKeyDown_ = function(e) {
     if (Blockly.mainWorkspace.isDragging()) {
       return;
     }
+    // Ctrl+C / Ctrl+V for a box selection (2026-10-18):
+    //   Ctrl+C  only REMEMBERS the selection in a box-clipboard buffer; no copy
+    //   is created yet (it behaves like a plain "copy").
+    //   Ctrl+V  creates a fresh copy of every remembered block and attaches it to
+    //   the cursor ("in hand"), the same as the right-click "Duplicate" option.
+    // A synthetic mouse event built from the live pointer position (Blockly.mouseXY_)
+    // drives the cursor-follow drag — getTouchIdentifierFromEvent returns 'mouse'
+    // for any event without changedTouches, so duplicateSelectionAndDragCallback
+    // takes the attach path. Box selection takes priority over a single block.
+    if (Blockly.mainWorkspace.getBoxSelection) {
+      var boxSelNow = Blockly.mainWorkspace.getBoxSelection();
+      if (e.keyCode == 67 && boxSelNow.size) {
+        // Copy: remember only, then clear the on-screen box selection.
+        Blockly.boxClipboard_ = Array.from(boxSelNow).filter(function(b) {
+          return b && b.workspace && !b.workspace.isFlyout;
+        });
+        Blockly.hideChaff();
+        Blockly.mainWorkspace.clearBoxSelection();
+        return;
+      }
+      if (e.keyCode == 86 && Blockly.boxClipboard_ && Blockly.boxClipboard_.length) {
+        // Paste: duplicate the remembered blocks, attached to the cursor.
+        Blockly.hideChaff();
+        var mouseXY = Blockly.mouseXY_ || {x: 0, y: 0};
+        // The same object is passed as the outer "event" (it carries the cursor
+        // coordinates duplicateSelectionAndDragCallback reads) AND as the
+        // invocation argument (its callback reads e.target / e.preventDefault /
+        // e.stopPropagation when it rebuilds the fake drag event), so it needs
+        // the full event-ish shape (2026-10-18).
+        var fakeMouse = {
+          clientX: mouseXY.x, clientY: mouseXY.y,
+          type: 'mousedown', target: {}, boxPaste: true,
+          preventDefault: function() {},
+          stopPropagation: function() {}
+        };
+        Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback(
+            Blockly.boxClipboard_, fakeMouse)(fakeMouse);
+        return;
+      }
+    }
     if (Blockly.selected &&
         Blockly.selected.isDeletable() && Blockly.selected.isMovable()) {
       // Don't allow copying immovable or undeletable blocks. The next step
