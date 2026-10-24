@@ -37,6 +37,8 @@
 import sys
 
 import errno, glob, json, os, re, subprocess, threading, codecs, functools, platform
+import time
+import traceback
 
 if sys.version_info[0] == 2:
   import httplib
@@ -227,13 +229,31 @@ class Gen_compressed(threading.Thread):
     self.search_paths_vertical = search_paths_vertical
     self.search_paths_horizontal = search_paths_horizontal
     self.closure_env = closure_env
+    self.failed = False
 
   def run(self):
-    self.gen_core(True)
-    self.gen_core(False)
-    self.gen_blocks("horizontal")
-    self.gen_blocks("vertical")
-    self.gen_blocks("common")
+    # Generate each output on its own. A failure used to kill this thread on
+    # the first error, so the remaining compressed files silently kept their
+    # previous contents while the build still reported success -- and the
+    # pages that load the compressed build kept showing the old code.
+    steps = [
+        ("blockly_compressed_vertical.js", lambda: self.gen_core(True)),
+        ("blockly_compressed_horizontal.js", lambda: self.gen_core(False)),
+        ("blocks_compressed_horizontal.js", lambda: self.gen_blocks("horizontal")),
+        ("blocks_compressed_vertical.js", lambda: self.gen_blocks("vertical")),
+        ("blocks_compressed.js", lambda: self.gen_blocks("common")),
+    ]
+    for target, step in steps:
+      try:
+        step()
+      except SystemExit:
+        # report_errors() has already printed the details.
+        self.failed = True
+        print("ERROR: %s was not regenerated." % target)
+      except Exception:
+        self.failed = True
+        print("ERROR: %s was not regenerated." % target)
+        traceback.print_exc()
 
   def gen_core(self, vertical):
     if vertical:
@@ -577,6 +597,9 @@ def exclude_horizontal(item):
   return not item.endswith("block_render_svg_horizontal.js")
 
 if __name__ == "__main__":
+  # Remember when the build started, so we can tell afterwards whether the
+  # outputs were really regenerated.
+  build_started = time.time()
   try:
     closure_dir = CLOSURE_DIR_NPM
     closure_root = CLOSURE_ROOT_NPM
@@ -645,3 +668,36 @@ if __name__ == "__main__":
   # raise "RuntimeError: can't create new thread at interpreter shutdown"
   for thread in threads:
     thread.join()
+
+  # The outputs are written from worker threads, so a failure there used to be
+  # invisible: the build reported success, webpack ran, and the pages that load
+  # the compressed build kept showing the previous version. Check that every
+  # output was actually rewritten and fail loudly if not.
+  stale = []
+  for target in ("blockly_compressed_vertical.js",
+                 "blockly_compressed_horizontal.js",
+                 "blockly_uncompressed_vertical.js",
+                 "blockly_uncompressed_horizontal.js",
+                 "blocks_compressed_vertical.js",
+                 "blocks_compressed_horizontal.js"):
+    if not os.path.exists(target):
+      stale.append(target + " (missing)")
+    elif os.path.getmtime(target) < build_started:
+      stale.append(target + " (not regenerated)")
+  failed = [t for t in threads if getattr(t, "failed", False)]
+  if stale or failed:
+    print("")
+    print("BUILD FAILED")
+    for name in stale:
+      print("  %s" % name)
+    for thread in failed:
+      print("  %s failed" % type(thread).__name__)
+    print("")
+    print("The build did not regenerate every output, so anything that loads")
+    print("the compressed build still shows the previous version. The errors")
+    print("above (FATAL ERROR, or a compiler that could not start) say why.")
+    print("Common causes: Java is not on PATH (the Closure compiler needs it),")
+    print("or the machine ran out of memory while the compiler was running.")
+    sys.exit(1)
+  print("")
+  print("BUILD OK: all compressed outputs were regenerated.")
