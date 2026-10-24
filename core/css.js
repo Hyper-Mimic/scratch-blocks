@@ -1040,8 +1040,21 @@ Blockly.Css.CONTENT = [
     'width: 100%;',
     'text-align: center;',
     'border-top: 1px solid $colour_valueReportBorder;',
-    'padding-top: 5px;',
+    // The drop-down's arrow straddles the box edge, so its inner half reaches a
+    // few pixels into the content: keep the icon that far off the bottom or the
+    // arrow is drawn on top of it when the picker opens upwards. (2026-10-24)
+    'padding: 5px 0 9px;',
     'cursor: pointer;',
+  '}',
+
+  '.scratchEyedropper img {',
+    // Give the icon its intrinsic size up front. Without it the button has no
+    // height until the SVG has been laid out, so the drop-down is measured
+    // shorter than it renders and everything derived from that height -- the
+    // arrow, the place the box is anchored -- is off by the difference.
+    'width: 24px;',
+    'height: 24px;',
+    'vertical-align: middle;',
   '}',
 
   '.scratchColourPickerLabel {',

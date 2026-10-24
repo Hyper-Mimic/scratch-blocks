@@ -224,6 +224,17 @@ Blockly.DropDownDiv.show = function(owner, primaryX, primaryY, secondaryX, secon
   Blockly.DropDownDiv.owner_ = owner;
   Blockly.DropDownDiv.onHide_ = opt_onHide;
   var div = Blockly.DropDownDiv.DIV_;
+  // Lay the div out before measuring it. A drop-down that is still display:none
+  // gets measured through a temporary display, which reports a smaller box than
+  // the one that ends up on screen, and everything derived from that height --
+  // chiefly the arrow position -- is then off by the difference. Nothing is
+  // painted between here and the final position below, so showing it first is
+  // not visible. (2026-10-24)
+  var wasHidden = div.style.display !== 'block';
+  if (wasHidden) {
+    div.style.display = 'block';
+    div.style.opacity = 0;
+  }
   var metrics = Blockly.DropDownDiv.getPositionMetrics(primaryX, primaryY, secondaryX, secondaryY);
   // Update arrow CSS
   Blockly.DropDownDiv.arrow_.style.transform = 'translate(' +
@@ -323,8 +334,20 @@ Blockly.DropDownDiv.getPositionMetrics = function(primaryX, primaryY, secondaryX
 
   // Calculate arrow Y. If we rendered secondary, add on bottom.
   // Extra pixels are added so that it covers the border of the div.
-  var arrowY = (renderedSecondary) ? divSize.height - Blockly.DropDownDiv.BORDER_SIZE : 0;
-  arrowY -= (Blockly.DropDownDiv.ARROW_SIZE / 2) + Blockly.DropDownDiv.BORDER_SIZE;
+  //
+  // `divSize` is the border box (getSize reports offsetWidth/offsetHeight) while
+  // the arrow is absolutely positioned inside the div's padding box, so the
+  // bottom case has to step in by the border before the arrow straddles the
+  // outer edge. Getting this wrong leaves an upward drop-down's arrow fully
+  // inside the box, painted over whatever sits in the last row -- in the colour
+  // picker that is the eyedropper button, which then looks clipped. (2026-10-24)
+  var arrowY;
+  if (renderedSecondary) {
+    arrowY = divSize.height - Blockly.DropDownDiv.BORDER_SIZE -
+        Blockly.DropDownDiv.ARROW_SIZE / 2;
+  } else {
+    arrowY = -(Blockly.DropDownDiv.ARROW_SIZE / 2 + Blockly.DropDownDiv.BORDER_SIZE);
+  }
 
   // Initial position calculated without any padding to provide an animation point.
   var initialX = renderX; // X position remains constant during animation.
