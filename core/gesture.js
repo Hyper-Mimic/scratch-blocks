@@ -418,7 +418,13 @@ Blockly.Gesture.prototype.updateIsDraggingFromFlyout_ = function() {
     }
     // The start block is no longer relevant, because this is a drag.
     this.startBlock_ = null;
-    this.targetBlock_ = this.flyout_.createBlock(this.targetBlock_);
+    // Pass the pointer position down so the copy can be placed with the grabbed
+    // spot (not just its upper left corner) under the cursor: the copy is drawn
+    // at the workspace's scale, which need not match the flyout's, and anchoring
+    // the corner alone leaves the block beside the pointer as soon as the two
+    // differ. (2026-10-24)
+    this.targetBlock_ = this.flyout_.createBlock(this.targetBlock_,
+        this.mouseDownXY_);
     this.targetBlock_.select();
     return true;
   }

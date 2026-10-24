@@ -804,17 +804,20 @@ Blockly.Flyout.prototype.onMouseDown_ = function(e) {
 /**
  * Create a copy of this block on the workspace.
  * @param {!Blockly.BlockSvg} originalBlock The block to copy from the flyout.
+ * @param {goog.math.Coordinate=} opt_grabPoint The pointer position, in client
+ *     pixels, at the moment the block was grabbed. When given, the same
+ *     relative spot of the copy is placed under it.
  * @return {Blockly.BlockSvg} The newly created block, or null if something
  *     went wrong with deserialization.
  * @package
  */
-Blockly.Flyout.prototype.createBlock = function(originalBlock) {
+Blockly.Flyout.prototype.createBlock = function(originalBlock, opt_grabPoint) {
   var newBlock = null;
   Blockly.Events.disable();
   var variablesBeforeCreation = this.targetWorkspace_.getAllVariables();
   this.targetWorkspace_.setResizesEnabled(false);
   try {
-    newBlock = this.placeNewBlock_(originalBlock);
+    newBlock = this.placeNewBlock_(originalBlock, opt_grabPoint);
     // Close the flyout.
     Blockly.hideChaff();
   } finally {
@@ -865,10 +868,13 @@ Blockly.Flyout.prototype.isScrollable = function() {
 /**
  * Copy a block from the flyout to the workspace and position it correctly.
  * @param {!Blockly.Block} oldBlock The flyout block to copy.
+ * @param {goog.math.Coordinate=} opt_grabPoint The pointer position, in client
+ *     pixels, at the moment the block was grabbed. When given, the same
+ *     relative spot of the new block is placed under it.
  * @return {!Blockly.Block} The new block in the main workspace.
  * @private
  */
-Blockly.Flyout.prototype.placeNewBlock_ = function(oldBlock) {
+Blockly.Flyout.prototype.placeNewBlock_ = function(oldBlock, opt_grabPoint) {
   var targetWorkspace = this.targetWorkspace_;
   var svgRootOld = oldBlock.getSvgRoot();
   if (!svgRootOld) {
@@ -889,6 +895,47 @@ Blockly.Flyout.prototype.placeNewBlock_ = function(oldBlock) {
     throw 'block is not rendered.';
   }
 
+  // Place the copy by measuring both blocks on screen instead of rebuilding
+  // the position from the two workspaces' `scale` and origin (2026-10-24).
+  //
+  // The old arithmetic assumed the flyout is drawn at `this.workspace_.scale`
+  // and that both workspaces are drawn at their `scale` property right now.
+  // Neither holds in general: a vertical flyout is pinned to the scale it was
+  // created at (it never hears about a later workspace zoom) while a
+  // horizontal flyout adopts the target scale in layout_ without re-scaling
+  // its canvas, so the two numbers can disagree and the copy lands far from
+  // the pointer.  The two rectangles below belong to the same block, so the
+  // ratio of their sizes is exactly the ratio of the scales actually used to
+  // draw them -- no bookkeeping required.
+  var oldRect = svgRootOld.getBoundingClientRect();
+  var newRect = svgRootNew.getBoundingClientRect();
+  var ctm = svgRootNew.getScreenCTM ? svgRootNew.getScreenCTM() : null;
+  var pxPerUnitX = ctm ? Math.abs(ctm.a) : targetWorkspace.scale;
+  var pxPerUnitY = ctm ? Math.abs(ctm.d) : targetWorkspace.scale;
+  if (oldRect.width && oldRect.height && newRect.width && newRect.height &&
+      pxPerUnitX && pxPerUnitY) {
+    // Default anchor: the copy's upper left corner sits on the flyout block's,
+    // which is what a click-to-create should do.
+    var targetLeft = oldRect.left;
+    var targetTop = oldRect.top;
+    if (opt_grabPoint) {
+      // Dragged out by the pointer: keep the grabbed spot under the cursor.
+      // The copy is drawn at the workspace's scale rather than the flyout's,
+      // so the offset inside the block has to be rescaled with it, otherwise
+      // the block slips out from under the pointer (and out of the cursor
+      // entirely) as soon as the two scales differ.
+      var grabX = (opt_grabPoint.x - oldRect.left) * newRect.width / oldRect.width;
+      var grabY = (opt_grabPoint.y - oldRect.top) * newRect.height / oldRect.height;
+      targetLeft = opt_grabPoint.x - grabX;
+      targetTop = opt_grabPoint.y - grabY;
+    }
+    block.moveBy((targetLeft - newRect.left) / pxPerUnitX,
+        (targetTop - newRect.top) / pxPerUnitY);
+    return block;
+  }
+
+  // Fallback for a flyout that is not on screen (no measurable boxes): the
+  // original scale/origin arithmetic.
   // The offset in pixels between the main workspace's origin and the upper left
   // corner of the injection div.
   var mainOffsetPixels = targetWorkspace.getOriginOffsetInPixels();
