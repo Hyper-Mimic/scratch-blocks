@@ -1643,6 +1643,15 @@ Blockly.BlockSvg.prototype.renderDefineBlock_ = function(steps, inputRows,
     fieldY += Blockly.BlockSvg.MIN_STATEMENT_INPUT_HEIGHT;
     this.renderFields_(followingTextInput.fieldRow, fieldStart, fieldY);
   }
+  // rightSide is where the hat's top edge ends, and it is derived from the
+  // prototype's width and the trailing text. inputRows.rightEdge never learns
+  // that: renderCompute_ left it at the statement-input minimum, so it points
+  // somewhere inside the block whenever the prototype is what makes the block
+  // wide. Publish the real edge (rightSide plus the corner radius, which is how
+  // far the hat's corner pushes the vertical side out) so anything drawn against
+  // the block's right edge afterwards -- the comment icon anchor in render() --
+  // lands on the outline instead of inside the block. (2026-10-24)
+  inputRows.rightEdge = rightSide + Blockly.BlockSvg.DEFINE_HAT_CORNER_RADIUS;
   // Draw the top and the right corner of the hat.
   steps.push('H', rightSide);
   steps.push(Blockly.BlockSvg.TOP_RIGHT_CORNER_DEFINE_HAT);
