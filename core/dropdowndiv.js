@@ -201,7 +201,40 @@ Blockly.DropDownDiv.showPositionedByBlock = function(owner, block,
   }
   // Set bounds to workspace; show the drop-down.
   Blockly.DropDownDiv.setBoundsElement(block.workspace.getParentSvg().parentNode);
-  return Blockly.DropDownDiv.show(this, primaryX, primaryY, secondaryX, secondaryY, opt_onHide);
+  // Record the caller's owner, not `this` (which is the Blockly.DropDownDiv
+  // namespace here): getOwner(), hideIfOwner() and repositionForWindowResize()
+  // all need the object that opened the drop-down. (2026-10-24)
+  return Blockly.DropDownDiv.show(owner, primaryX, primaryY, secondaryX, secondaryY, opt_onHide);
+};
+
+/**
+ * Re-place the drop-down that is currently showing, using the same anchor it was
+ * opened with.
+ *
+ * The box and its arrow are positioned from the size the content had when the
+ * drop-down opened. Content that appears afterwards -- a host add-on inserting a
+ * row, an image that only gets laid out once it is visible -- leaves the box
+ * taller than the height it was anchored with, so the drop-down hangs past the
+ * block it points at and the arrow no longer sits on the box edge. Call this
+ * once the new content has been laid out.
+ * @package
+ */
+Blockly.DropDownDiv.repositionForWindowResize = function() {
+  var owner = Blockly.DropDownDiv.owner_;
+  if (!owner || !owner.sourceBlock_) {
+    return;
+  }
+  var div = Blockly.DropDownDiv.DIV_;
+  // The box is already on screen, so pin it for one frame: show() rewrites
+  // left/top and animates transform, and the correction would otherwise slide
+  // into place instead of simply being where it belongs.
+  var transition = div.style.transition;
+  div.style.transition = 'none';
+  Blockly.DropDownDiv.showPositionedByBlock(owner, owner.sourceBlock_,
+      Blockly.DropDownDiv.onHide_);
+  // Flush the layout while the transition is still off.
+  div.offsetHeight;
+  div.style.transition = transition;
 };
 
 /**
