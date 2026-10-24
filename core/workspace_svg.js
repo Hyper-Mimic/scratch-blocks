@@ -122,6 +122,18 @@ Blockly.WorkspaceSvg = function(options, opt_blockDragSurface, opt_wsDragSurface
   this.procedureReturnChangeTimeout_ = null;
   this.checkProcedureReturnAfterGesture_ = false;
 
+  // Two-finger pinch zoom (touch screens). pinch_ holds the state of a pinch in
+  // progress, the rAF fields coalesce the zoom into one per frame, the same way
+  // the wheel handler does.
+  /** @type {?Object} @private */
+  this.pinch_ = null;
+  /** @type {boolean} @private */
+  this.pinchRafScheduled_ = false;
+  /** @type {number} @private */
+  this.pinchRafId_ = null;
+  /** @type {Array.<!Array.<!Object>>} @private */
+  this.pinchListeners_ = [];
+
   // PATCH 9 (2026-10-10): cache of getBlocksBoundingBox(), in workspace units.
   // That call walks every top block/comment and recurses down each next-chain, so
   // it costs O(total blocks); it is reached from every getMetrics(), which itself
@@ -513,6 +525,7 @@ Blockly.WorkspaceSvg.prototype.createDom = function(opt_backgroundClass) {
       Blockly.bindEventWithChecks_(this.svgGroup_, 'wheel', this,
           this.onMouseWheel_);
     }
+    this.initPinchZoom_();
   }
 
   this.intersectionObserver = new Blockly.IntersectionObserver(this);
@@ -558,6 +571,18 @@ Blockly.WorkspaceSvg.prototype.dispose = function() {
   this.zoomRafScheduled_ = false;
   this.zoomRafId_ = null;
   this.pendingZoomDelta_ = 0;
+  // Stop listening for pinch gestures, and drop a pending zoom frame.
+  for (var i = 0; i < this.pinchListeners_.length; i++) {
+    document.removeEventListener(this.pinchListeners_[i][0],
+        this.pinchListeners_[i][1], {capture: true});
+  }
+  this.pinchListeners_.length = 0;
+  this.pinch_ = null;
+  if (this.pinchRafScheduled_ && this.pinchRafId_) {
+    window.cancelAnimationFrame(this.pinchRafId_);
+  }
+  this.pinchRafScheduled_ = false;
+  this.pinchRafId_ = null;
   if (this.intersectionObserver) {
     this.intersectionObserver.dispose();
     this.intersectionObserver = null;
@@ -1648,6 +1673,202 @@ Blockly.WorkspaceSvg.prototype.onMouseWheel_ = function(e) {
     }
   }
   e.preventDefault();
+};
+
+/**
+ * Distance between the first two touches of a touch event, in pixels.
+ * @param {!TouchEvent} e Touch event with at least two touches.
+ * @return {number} Distance between the touches.
+ * @private
+ */
+Blockly.WorkspaceSvg.touchDistance_ = function(e) {
+  var dx = e.touches[0].clientX - e.touches[1].clientX;
+  var dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+/**
+ * Midpoint between the first two touches of a touch event, in client pixels.
+ * @param {!TouchEvent} e Touch event with at least two touches.
+ * @return {{clientX: number, clientY: number}} Midpoint of the touches.
+ * @private
+ */
+Blockly.WorkspaceSvg.touchMidpoint_ = function(e) {
+  return {
+    clientX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+    clientY: (e.touches[0].clientY + e.touches[1].clientY) / 2
+  };
+};
+
+/**
+ * Start listening for two-finger pinch gestures over this workspace.
+ *
+ * A pinch has to win over the gesture that the first finger starts, and it has
+ * to be able to preventDefault() (otherwise the browser page-zooms instead), so
+ * the listeners sit on the document in the capture phase and only act on
+ * touches that landed inside this workspace's canvas.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.initPinchZoom_ = function() {
+  if (!this.options.zoomOptions || this.pinchListeners_.length) {
+    return;
+  }
+  var workspace = this;
+
+  var isInsideWorkspace = function(e) {
+    return !!(workspace.svgGroup_ && workspace.svgGroup_.contains(e.target));
+  };
+
+  var onStart = function(e) {
+    if (e.touches.length < 2 || !isInsideWorkspace(e)) {
+      return;
+    }
+    workspace.beginPinch_(e);
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  var onMove = function(e) {
+    if (!workspace.pinch_) {
+      // The second finger may have arrived without a touchstart we saw.
+      if (e.touches.length < 2 || !isInsideWorkspace(e)) {
+        return;
+      }
+      workspace.beginPinch_(e);
+    } else if (e.touches.length < 2) {
+      // A finger was lifted mid-pinch; stop rather than jumping.
+      workspace.endPinch_();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    } else {
+      workspace.updatePinch_(e);
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  var onEnd = function(e) {
+    if (!workspace.pinch_) {
+      return;
+    }
+    if (e.touches.length >= 2) {
+      // One finger was replaced by another: continue from the new pair.
+      workspace.pinch_.distance = Blockly.WorkspaceSvg.touchDistance_(e);
+      workspace.pinch_.scale = workspace.scale;
+      return;
+    }
+    workspace.endPinch_();
+  };
+
+  var listeners = [
+    ['touchstart', onStart],
+    ['touchmove', onMove],
+    ['touchend', onEnd],
+    ['touchcancel', onEnd]
+  ];
+  for (var i = 0; i < listeners.length; i++) {
+    var type = listeners[i][0];
+    var func = listeners[i][1];
+    // Not passive: a pinch that cannot preventDefault() would be turned into a
+    // browser page zoom instead of a workspace zoom.
+    document.addEventListener(type, func, {capture: true, passive: false});
+    this.pinchListeners_.push([type, func]);
+  }
+};
+
+/**
+ * Begin a pinch: the view is about to be scaled by the distance between two
+ * fingers, so anything the first finger started dragging has to be dropped.
+ * @param {!TouchEvent} e Touch event that started the pinch.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.beginPinch_ = function(e) {
+  this.cancelCurrentGesture();
+  Blockly.longStop_();
+  // Let the next touch start a fresh gesture.
+  Blockly.Touch.clearTouchIdentifier();
+  Blockly.WidgetDiv.hide(true);
+  Blockly.DropDownDiv.hideWithoutAnimation();
+  this.pinch_ = {
+    distance: Blockly.WorkspaceSvg.touchDistance_(e),
+    scale: this.scale,
+    targetScale: this.scale
+  };
+};
+
+/**
+ * Update the zoom target of a pinch in progress.
+ * @param {!TouchEvent} e Touch event of the move.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.updatePinch_ = function(e) {
+  var pinch = this.pinch_;
+  var distance = Blockly.WorkspaceSvg.touchDistance_(e);
+  if (!pinch.distance || !distance) {
+    return;
+  }
+  var zoomOptions = this.options.zoomOptions;
+  var target = pinch.scale * (distance / pinch.distance);
+  if (zoomOptions.maxScale) {
+    target = Math.min(target, zoomOptions.maxScale);
+  }
+  if (zoomOptions.minScale) {
+    target = Math.max(target, zoomOptions.minScale);
+  }
+  pinch.targetScale = target;
+  var midpoint = Blockly.WorkspaceSvg.touchMidpoint_(e);
+  pinch.clientX = midpoint.clientX;
+  pinch.clientY = midpoint.clientY;
+
+  // One zoom per animation frame: zoom() costs two forced layouts plus a full
+  // scrollbar resize chain, and a pinch reports at least as often as that.
+  if (!this.pinchRafScheduled_) {
+    this.pinchRafScheduled_ = true;
+    var self = this;
+    this.pinchRafId_ = requestAnimationFrame(function() {
+      self.pinchRafScheduled_ = false;
+      self.pinchRafId_ = null;
+      self.applyPinchZoom_();
+    });
+  }
+};
+
+/**
+ * Scale the view to the zoom a pinch has asked for, around the point between
+ * the two fingers.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.applyPinchZoom_ = function() {
+  var pinch = this.pinch_;
+  if (!pinch) {
+    return;
+  }
+  var ratio = pinch.targetScale / this.scale;
+  if (!isFinite(ratio) || Math.abs(ratio - 1) < 0.0001) {
+    return;
+  }
+  var speed = this.options.zoomOptions.scaleSpeed || 1.2;
+  var position = Blockly.utils.mouseToSvg(
+      {clientX: pinch.clientX, clientY: pinch.clientY},
+      this.getParentSvg(), this.getInverseScreenCTM());
+  // zoom() counts in steps of scaleSpeed, so convert the wanted ratio into
+  // (possibly fractional) steps.
+  this.zoom(position.x, position.y, Math.log(ratio) / Math.log(speed));
+};
+
+/**
+ * End a pinch and let the next touch start a new gesture.
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.endPinch_ = function() {
+  this.pinch_ = null;
+  if (this.pinchRafScheduled_ && this.pinchRafId_) {
+    window.cancelAnimationFrame(this.pinchRafId_);
+  }
+  this.pinchRafScheduled_ = false;
+  this.pinchRafId_ = null;
+  Blockly.Touch.clearTouchIdentifier();
 };
 
 /**
