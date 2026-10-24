@@ -1716,7 +1716,12 @@ Blockly.WorkspaceSvg.prototype.initPinchZoom_ = function() {
   var workspace = this;
 
   var isInsideWorkspace = function(e) {
-    return !!(workspace.svgGroup_ && workspace.svgGroup_.contains(e.target));
+    // The whole canvas area, empty space included: the background rectangle is
+    // a sibling of the canvas group, not a child of it. The palette is a
+    // separate <svg> next to this one, so a pinch on it is not a zoom of the
+    // workspace.
+    var parentSvg = workspace.getParentSvg();
+    return !!(parentSvg && parentSvg.contains(e.target));
   };
 
   var onStart = function(e) {
@@ -1790,10 +1795,17 @@ Blockly.WorkspaceSvg.prototype.beginPinch_ = function(e) {
   Blockly.Touch.clearTouchIdentifier();
   Blockly.WidgetDiv.hide(true);
   Blockly.DropDownDiv.hideWithoutAnimation();
+  var midpoint = Blockly.WorkspaceSvg.touchMidpoint_(e);
   this.pinch_ = {
     distance: Blockly.WorkspaceSvg.touchDistance_(e),
     scale: this.scale,
-    targetScale: this.scale
+    targetScale: this.scale,
+    clientX: midpoint.clientX,
+    clientY: midpoint.clientY,
+    // Where the midpoint was when the last frame was drawn, so the view can be
+    // panned by however far the fingers travelled since then.
+    lastClientX: midpoint.clientX,
+    lastClientY: midpoint.clientY
   };
 };
 
@@ -1845,16 +1857,25 @@ Blockly.WorkspaceSvg.prototype.applyPinchZoom_ = function() {
     return;
   }
   var ratio = pinch.targetScale / this.scale;
-  if (!isFinite(ratio) || Math.abs(ratio - 1) < 0.0001) {
-    return;
+  if (isFinite(ratio) && Math.abs(ratio - 1) >= 0.0001) {
+    var speed = this.options.zoomOptions.scaleSpeed || 1.2;
+    var position = Blockly.utils.mouseToSvg(
+        {clientX: pinch.clientX, clientY: pinch.clientY},
+        this.getParentSvg(), this.getInverseScreenCTM());
+    // zoom() counts in steps of scaleSpeed, so convert the wanted ratio into
+    // (possibly fractional) steps.
+    this.zoom(position.x, position.y, Math.log(ratio) / Math.log(speed));
   }
-  var speed = this.options.zoomOptions.scaleSpeed || 1.2;
-  var position = Blockly.utils.mouseToSvg(
-      {clientX: pinch.clientX, clientY: pinch.clientY},
-      this.getParentSvg(), this.getInverseScreenCTM());
-  // zoom() counts in steps of scaleSpeed, so convert the wanted ratio into
-  // (possibly fractional) steps.
-  this.zoom(position.x, position.y, Math.log(ratio) / Math.log(speed));
+  // Pan the view along with the fingers: the point between them is what the
+  // user is holding on to, so the content follows it even when the pinch only
+  // moves and does not change the distance.
+  var dx = pinch.clientX - pinch.lastClientX;
+  var dy = pinch.clientY - pinch.lastClientY;
+  pinch.lastClientX = pinch.clientX;
+  pinch.lastClientY = pinch.clientY;
+  if (dx || dy) {
+    this.scroll(this.scrollX + dx, this.scrollY + dy);
+  }
 };
 
 /**
