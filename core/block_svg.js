@@ -84,6 +84,19 @@ Blockly.BlockSvg = function(workspace, prototypeName, opt_id) {
   Blockly.BlockSvg.superClass_.constructor.call(this,
       workspace, prototypeName, opt_id);
 
+  // These four flags used to live on the prototype (or not at all). A prototype
+  // default is fine until someone assigns through an instance, but it makes the
+  // "unloaded" state impossible to reason about per block, so they are set per
+  // instance here instead. See the viewport culling notes on setUnloaded_.
+  /** @type {boolean} @private */
+  this.intersects_ = true;
+  /** @type {boolean} @private */
+  this.unloaded_ = false;
+  /** @type {Node} @private */
+  this.anchorNode_ = null;
+  /** @type {boolean} @private */
+  this.needsRenderOnReload_ = false;
+
   // Expose this block's ID on its top-level SVG group.
   if (this.svgGroup_.dataset) {
     this.svgGroup_.dataset.id = this.id;
@@ -279,8 +292,12 @@ Blockly.BlockSvg.prototype.getIcons = function() {
   return icons;
 };
 
-Blockly.BlockSvg.prototype.intersects_ = true;
-
+/**
+ * Show or hide this block. This is the only entry point that makes a block
+ * visible again, which is why an unloaded block is put back on the canvas here:
+ * a block cannot be shown while it has no parent.
+ * @param {boolean} intersects Whether the block intersects the viewport.
+ */
 Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
   if (intersects === this.intersects_) {
     return;
@@ -291,10 +308,151 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
     return;
   }
   if (intersects) {
+    if (this.unloaded_) {
+      // Skip the deferred render here: the culling pass batches it at the end of
+      // the frame so jumping across the workspace does not rebuild the
+      // scrollbars once per restored stack.
+      this.attachToCanvas_(true);
+    }
     root.style.display = '';
   } else {
     root.style.display = 'none';
   }
+};
+
+/**
+ * Unload or restore this block's SVG root. Only the intersection observer may
+ * pass true; every other caller restores through setIntersects(true).
+ *
+ * Unloading moves the whole top level stack out of the document. The block
+ * object, its geometry and the workspace's content rect table all stay valid,
+ * so nothing outside the DOM notices. A stack is unloaded only after it has
+ * already been culled with display:none, so a bug here can at worst leave a
+ * block hidden, never remove a block that should have been visible.
+ * @param {boolean} unload True to take the stack out of the document.
+ * @package
+ */
+Blockly.BlockSvg.prototype.setUnloaded_ = function(unload) {
+  if (unload) {
+    if (this.unloaded_ || this.intersects_) {
+      return;
+    }
+    this.detachFromCanvas_();
+    return;
+  }
+  if (this.unloaded_) {
+    this.attachToCanvas_(true);
+  }
+};
+
+/**
+ * Put this block's SVG root back on the workspace canvas, at the position it
+ * occupied before it was unloaded.
+ * @param {boolean=} opt_skipRender Do not consume a pending render. Forced
+ *     restores pass true and let the next culling pass render in a batch.
+ * @return {boolean} True if the root is on the canvas afterwards.
+ * @private
+ */
+Blockly.BlockSvg.prototype.attachToCanvas_ = function(opt_skipRender) {
+  var root = this.svgGroup_;
+  var workspace = this.workspace;
+  var anchor = this.anchorNode_;
+  this.anchorNode_ = null;
+  this.unloaded_ = false;
+  var canvas = workspace && workspace.getCanvas ? workspace.getCanvas() : null;
+  if (root && canvas && root.parentNode !== canvas) {
+    var inserted = false;
+    if (anchor && anchor.parentNode === canvas) {
+      try {
+        canvas.insertBefore(root, anchor);
+        inserted = true;
+      } catch (e) {
+        inserted = false;
+      }
+    }
+    if (!inserted) {
+      // The anchor is gone (its siblings were reordered or removed). Falling
+      // back to the end of the canvas only costs z-order, not correctness.
+      canvas.appendChild(root);
+    }
+  }
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.removeChild(anchor);
+  }
+  if (this.needsRenderOnReload_ && !opt_skipRender) {
+    this.needsRenderOnReload_ = false;
+    this.render();
+  }
+  return !!root;
+};
+
+/**
+ * Take this block's SVG root out of the document, leaving a comment node where
+ * it used to be so the z-order survives the round trip. Comment nodes are
+ * skipped by rendering, style resolution and :first-child style selectors.
+ * @return {boolean} True if the stack was unloaded.
+ * @private
+ */
+Blockly.BlockSvg.prototype.detachFromCanvas_ = function() {
+  var root = this.svgGroup_;
+  var workspace = this.workspace;
+  if (!root || !workspace || this.unloaded_) {
+    return false;
+  }
+  var canvas = workspace.getCanvas ? workspace.getCanvas() : null;
+  // Only stacks sitting directly on the canvas can be unloaded. A block on the
+  // drag surface, inside a flyout or inside a parent block has a parent whose
+  // structure must stay intact.
+  if (!canvas || root.parentNode !== canvas) {
+    return false;
+  }
+  var layer = workspace.getOffscreenBlockLayer_ ?
+      workspace.getOffscreenBlockLayer_() : null;
+  if (!layer) {
+    return false;
+  }
+  var anchor = null;
+  try {
+    anchor = document.createComment('blockly:unloaded:' + this.id);
+    canvas.insertBefore(anchor, root);
+  } catch (e) {
+    anchor = null;
+  }
+  if (!anchor) {
+    return false;
+  }
+  this.anchorNode_ = anchor;
+  this.unloaded_ = true;
+  // appendChild implicitly detaches the root from the canvas.
+  layer.appendChild(root);
+  return true;
+};
+
+/**
+ * Reconcile the unloaded flag with the DOM. The DOM is the source of truth: if
+ * the root is no longer in the offscreen layer, something else moved or removed
+ * it (a drop, a dispose, a hand-off), so the flag and the leftover anchor go
+ * too. This runs once per block per culling pass, which turns any missed
+ * restore path into a one frame glitch instead of a block that never returns.
+ * @return {boolean} True if stale state was repaired.
+ * @package
+ */
+Blockly.BlockSvg.prototype.repairUnloadedState_ = function() {
+  if (!this.unloaded_) {
+    return false;
+  }
+  var workspace = this.workspace;
+  var layer = workspace && workspace.offscreenBlockLayer_;
+  if (this.svgGroup_ && layer && this.svgGroup_.parentNode === layer) {
+    return false;
+  }
+  this.unloaded_ = false;
+  var anchor = this.anchorNode_;
+  this.anchorNode_ = null;
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.removeChild(anchor);
+  }
+  return true;
 };
 
 Blockly.BlockSvg.prototype.updateIntersectionObserver = function() {
@@ -332,6 +490,13 @@ Blockly.BlockSvg.prototype.setParent = function(newParent) {
   // We won't need to reattach ourselves anywhere.
   if (this.workspace.isClearing || !svgRoot) {
     return;
+  }
+
+  // A block that was unloaded has to be back on the canvas before its SVG is
+  // reparented below, otherwise it would be appended to a parent block while
+  // its anchor node is still sitting in the canvas.
+  if (this.unloaded_) {
+    this.attachToCanvas_(true);
   }
 
   this.updateIntersectionObserver();
@@ -451,6 +616,11 @@ Blockly.BlockSvg.prototype.moveToDragSurface_ = function() {
   if (!this.useDragSurface_) {
     return;
   }
+  // An unloaded stack is not in the canvas, so the drag surface would adopt it
+  // and the unloaded flag would never clear. Restore it first.
+  if (this.unloaded_) {
+    this.attachToCanvas_(true);
+  }
   // The translation for drag surface blocks,
   // is equal to the current relative-to-surface position,
   // to keep the position in sync as it move on/off the surface.
@@ -551,18 +721,39 @@ Blockly.BlockSvg.prototype.snapToGrid = function() {
  * @return {!{topLeft: goog.math.Coordinate, bottomRight: goog.math.Coordinate}}
  *    Object with top left and bottom right coordinates of the bounding box.
  */
+/**
+ * How far this block's SVG is drawn above the origin of its transform.
+ *
+ * A start hat ("when green flag clicked" and friends) is drawn as a curve that
+ * starts at the transform origin and bulges up to y = -START_HAT_HEIGHT, so the
+ * origin is the top of the body rather than the top of the block. A procedure
+ * definition uses its own, larger define hat. Everything else starts at 0.
+ * @return {number} Height above the transform origin, in workspace units.
+ * @package
+ */
+Blockly.BlockSvg.prototype.getTopOverhang_ = function() {
+  if (this.type === Blockly.PROCEDURES_DEFINITION_BLOCK_TYPE) {
+    return Blockly.BlockSvg.DEFINE_HAT_CORNER_RADIUS;
+  }
+  return this.startHat_ ? Blockly.BlockSvg.START_HAT_HEIGHT : 0;
+};
+
 Blockly.BlockSvg.prototype.getBoundingRectangle = function() {
   var blockXY = this.getRelativeToSurfaceXY(this);
   var blockBounds = this.getHeightWidth();
+  // Hat blocks draw above their own transform origin, so without the overhang
+  // the first ~16px of a hat look like empty space. Viewport culling used to
+  // hide a hat while its arc was still on screen because of this.
+  var topOverhang = this.getTopOverhang_();
   var topLeft;
   var bottomRight;
   if (this.RTL) {
     topLeft = new goog.math.Coordinate(blockXY.x - blockBounds.width,
-        blockXY.y);
+        blockXY.y - topOverhang);
     bottomRight = new goog.math.Coordinate(blockXY.x,
         blockXY.y + blockBounds.height);
   } else {
-    topLeft = new goog.math.Coordinate(blockXY.x, blockXY.y);
+    topLeft = new goog.math.Coordinate(blockXY.x, blockXY.y - topOverhang);
     bottomRight = new goog.math.Coordinate(blockXY.x + blockBounds.width,
         blockXY.y + blockBounds.height);
   }
@@ -886,6 +1077,12 @@ Blockly.BlockSvg.prototype.dispose = function(healStack, animate) {
   if (!this.workspace) {
     // The block has already been deleted.
     return;
+  }
+  // Restore an unloaded stack before disposal. Unplugging goes through
+  // setParent, and the SVG has to be in the canvas for that to reparent it
+  // cleanly; doing it here also means the anchor node is removed with the block.
+  if (this.unloaded_) {
+    this.attachToCanvas_(true);
   }
   Blockly.Tooltip.hide();
   Blockly.Field.startCache();
@@ -1810,6 +2007,12 @@ Blockly.BlockSvg.prototype.bringToFront = function() {
   var svgRoot = rootBlock.getSvgRoot();
   if (!svgRoot) {
     return;
+  }
+  // While a stack is unloaded its parent is the offscreen layer, so appendChild
+  // below would only reorder that layer and the stack would come back at its old
+  // z position instead of the front.
+  if (rootBlock.unloaded_) {
+    rootBlock.attachToCanvas_(true);
   }
   var parent = svgRoot.parentNode;
   if (parent && parent.lastElementChild !== svgRoot) {

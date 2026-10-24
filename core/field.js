@@ -476,6 +476,12 @@ Blockly.Field.prototype.render_ = function() {
  * it eventually does succeed, the result will be cached.
  **/
 Blockly.Field.prototype.updateWidth = function() {
+  // A field inside an unloaded stack cannot be measured: text outside the
+  // document has no layout, so getComputedTextLength() reports 0. Keep the last
+  // known width instead; the block is re-rendered when it comes back.
+  if (this.sourceBlock_ && this.sourceBlock_.unloaded_) {
+    return;
+  }
   // Calculate width of field
   var width = Blockly.Field.getCachedWidth(this.textElement_);
 

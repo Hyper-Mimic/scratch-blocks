@@ -134,6 +134,14 @@ Blockly.WorkspaceSvg = function(options, opt_blockDragSurface, opt_wsDragSurface
   // O(1) sanity net: if anything adds or removes a top element without going
   // through invalidateContentBounds_(), the count mismatches and we recompute.
   this.contentBoundingBoxCount_ = 0;
+
+  // Viewport culling: culled stacks may additionally be moved out of the
+  // document (see BlockSvg.setUnloaded_). The layer holding them is deliberately
+  // never attached to the DOM, so an unloaded stack costs nothing in style
+  // recalculation, layout or paint. It is still an SVG element so that reading
+  // a block's transform keeps working while it is away.
+  this.viewportCullingEnabled_ = options.viewportCulling !== false;
+  this.offscreenBlockLayer_ = null;
 };
 goog.inherits(Blockly.WorkspaceSvg, Blockly.Workspace);
 
@@ -561,6 +569,7 @@ Blockly.WorkspaceSvg.prototype.dispose = function() {
   }
   this.svgBlockCanvas_ = null;
   this.svgBubbleCanvas_ = null;
+  this.offscreenBlockLayer_ = null;
   if (this.toolbox_) {
     this.toolbox_.dispose();
     this.toolbox_ = null;
@@ -785,6 +794,63 @@ Blockly.WorkspaceSvg.prototype.queueIntersectionCheck = function() {
   if (this.intersectionObserver) {
     this.intersectionObserver.queueIntersectionCheck();
   }
+};
+
+/**
+ * The container that holds SVG roots of unloaded stacks. It is created lazily
+ * and never appended to the document, which is the whole point: an unloaded
+ * stack must not take part in style resolution or paint. Returns null once the
+ * workspace has been disposed.
+ * @return {?Element}
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.getOffscreenBlockLayer_ = function() {
+  if (!this.rendered) {
+    return null;
+  }
+  if (!this.offscreenBlockLayer_) {
+    this.offscreenBlockLayer_ = Blockly.utils.createSvgElement('g', {
+      'class': 'blocklyOffscreenBlocks'
+    }, null);
+  }
+  return this.offscreenBlockLayer_;
+};
+
+/**
+ * Whether a block is currently being moved by the user. Panning the workspace
+ * and wheel scrolling are deliberately not included: the canvas and its anchors
+ * move together, so unloading stays safe, and those are exactly the gestures
+ * that need it most.
+ * @return {boolean}
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.isMovingBlocks_ = function() {
+  var gesture = this.currentGesture_;
+  if (gesture && (gesture.isDraggingBlock_ || gesture.isBoxDragging_)) {
+    return true;
+  }
+  var surface = this.blockDragSurface_;
+  return !!(surface && typeof surface.getCurrentBlock === 'function' &&
+      surface.getCurrentBlock());
+};
+
+/**
+ * Turn viewport culling (and with it, unloading stacks from the document) on or
+ * off at runtime. Turning it off restores every unloaded stack.
+ * @param {boolean} enabled True to enable.
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.setViewportCullingEnabled = function(enabled) {
+  this.viewportCullingEnabled_ = !!enabled;
+  if (!this.viewportCullingEnabled_) {
+    var blocks = this.getTopBlocks(false);
+    for (var i = 0; i < blocks.length; i++) {
+      if (blocks[i].unloaded_) {
+        blocks[i].attachToCanvas_(true);
+      }
+    }
+  }
+  this.queueIntersectionCheck();
 };
 
 /**
@@ -2895,6 +2961,11 @@ Blockly.WorkspaceSvg.prototype.getGesture = function(e) {
  */
 Blockly.WorkspaceSvg.prototype.clearGesture = function() {
   this.currentGesture_ = null;
+
+  // Unloading is suspended while a block is being moved (see
+  // WorkspaceSvg.isMovingBlocks_), so re-evaluate the viewport now that the
+  // gesture is over; otherwise stacks that left during the drag stay loaded.
+  this.queueIntersectionCheck();
 
   if (this.checkProcedureReturnAfterGesture_) {
     this.processProcedureReturnsChanged_();

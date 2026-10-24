@@ -135,6 +135,9 @@ Blockly.Options = function(options) {
   this.hasTrashcan = hasTrashcan;
   this.hasSounds = hasSounds;
   this.hasCss = hasCss;
+  // Defaults to on. WorkspaceSvg reads this once at construction and can be
+  // overridden later with WorkspaceSvg.setViewportCullingEnabled().
+  this.viewportCulling = options['viewportCulling'] !== false;
   this.horizontalLayout = horizontalLayout;
   this.languageTree = languageTree;
   this.gridOptions = Blockly.Options.parseGridOptions_(options);

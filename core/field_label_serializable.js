@@ -81,6 +81,11 @@ Blockly.FieldLabelSerializable.prototype.SERIALIZABLE = true;
  * it eventually does succeed, the result will be cached.
  **/
 Blockly.FieldLabelSerializable.prototype.updateWidth = function() {
+  // See Blockly.Field.prototype.updateWidth: a detached text element has no
+  // layout, so measuring it would write a zero width.
+  if (this.sourceBlock_ && this.sourceBlock_.unloaded_) {
+    return;
+  }
   // Set width of the field.
   // Unlike the base Field class, this doesn't add space to editable fields.
   this.size_.width = Blockly.Field.getCachedWidth(this.textElement_);

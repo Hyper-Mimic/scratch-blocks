@@ -12,7 +12,39 @@ Blockly.IntersectionObserver = function(workspace) {
   // disagree and a single re-rendered stack is measured once instead of twice.
   // contentDirty_ means "ask the workspace to refresh its table before reading".
   this.contentDirty_ = true;
+  // Stacks that came back into view and still owe a render. They are rendered
+  // together at the end of the pass so the workspace resizes once.
+  this.pendingRenders_ = [];
   this.checkForIntersections = this.checkForIntersections.bind(this);
+};
+
+/**
+ * Distance, in screens, beyond the viewport at which an already culled stack is
+ * moved out of the document. Two screens is far enough that ordinary scrolling
+ * never reaches the boundary while the gap to the visible test (12 * scale)
+ * provides the hysteresis.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.UNLOAD_SCREENS = 2;
+
+/**
+ * Upper bound on how many stacks one frame may unload. Jumping to a far corner
+ * can put hundreds of stacks over the threshold at once, and doing them all in a
+ * single frame is a long task exactly when the user asked for a smooth frame.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.MAX_UNLOAD_PER_FRAME = 30;
+
+/**
+ * Counters for profiling, mirrored onto window.__cullingStats. Kept in one
+ * reused object so a per-frame update does not allocate.
+ */
+Blockly.IntersectionObserver.stats = {
+  frames: 0,
+  lastMs: 0,
+  culled: 0,
+  unloaded: 0,
+  restored: 0
 };
 
 Blockly.IntersectionObserver.prototype.observe = function(block) {
@@ -49,6 +81,7 @@ Blockly.IntersectionObserver.prototype.unobserve = function(block) {
 Blockly.IntersectionObserver.prototype.dispose = function() {
   this.observing = [];
   this.observingSet_ = null;
+  this.pendingRenders_ = [];
   this.workspace = null;
 };
 
@@ -75,12 +108,55 @@ Blockly.IntersectionObserver.prototype.queueIntersectionCheck = function() {
   }
 };
 
+/**
+ * Whether this pass may move culled stacks out of the document. These are the
+ * per-workspace conditions; per-stack ones are checked in the loop.
+ * @return {boolean}
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.canUnloadStacks_ = function() {
+  var workspace = this.workspace;
+  if (!workspace || !workspace.viewportCullingEnabled_) {
+    return false;
+  }
+  // A flyout keeps its blocks in the document on purpose: it inserts background
+  // rectangles relative to them and measures itself with getBBox(), which only
+  // counts attached nodes. A mutator does the same. Both keep the display:none
+  // culling that happens before this gate.
+  if (workspace.isFlyout || workspace.isMutator) {
+    return false;
+  }
+  // A hidden workspace has no meaningful text measurements, and its size
+  // attributes can collapse, which would make everything look offscreen.
+  if (workspace.isVisible && !workspace.isVisible()) {
+    return false;
+  }
+  // Never move stacks while the user is moving one.
+  if (workspace.isMovingBlocks_ && workspace.isMovingBlocks_()) {
+    return false;
+  }
+  // An open field editor or dropdown is positioned from the block's bounding
+  // client rect, which is empty for a node outside the document.
+  if (Blockly.DropDownDiv && Blockly.DropDownDiv.isVisible &&
+      Blockly.DropDownDiv.isVisible()) {
+    return false;
+  }
+  if (Blockly.WidgetDiv && Blockly.WidgetDiv.isVisible &&
+      Blockly.WidgetDiv.isVisible()) {
+    return false;
+  }
+  return true;
+};
+
 Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   this.intersectionCheckQueued = false;
 
   if (!this.workspace) {
     return;
   }
+
+  var hasPerformance = typeof performance !== 'undefined' && !!performance.now;
+  var startTime = hasPerformance ? performance.now() : Date.now();
 
   var workspace = this.workspace;
   var workspaceScale = workspace.scale;
@@ -116,8 +192,33 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   }
   var rects = workspace.contentRectCache_;
 
+  // Viewport culling (2026-10-23): culled stacks may additionally be moved out
+  // of the document. The decision needs a couple of workspace-wide conditions,
+  // so they are evaluated once per pass rather than per block. A zero-sized or
+  // unscaled workspace would make the distance below infinite, so it is excluded
+  // here rather than guarded twice.
+  var canUnload = this.canUnloadStacks_() &&
+      workspaceWidth > 0 && workspaceHeight > 0 && workspaceScale > 0;
+  var canvas = workspace.getCanvas();
+  var selectedRoot = null;
+  if (Blockly.selected && Blockly.selected.workspace === workspace) {
+    selectedRoot = Blockly.selected.getRootBlock();
+  }
+  var unloadDistance = Blockly.IntersectionObserver.UNLOAD_SCREENS;
+  var candidates = null;
+  var culledCount = 0;
+  var unloadedCount = 0;
+  var restoredCount = 0;
+
   for (var i = 0; i < this.observing.length; i++) {
     var block = this.observing[i];
+
+    // The DOM is the source of truth for the unloaded flag. If anything moved or
+    // removed the root behind our back (a drop, a dispose, a cancelled unload),
+    // drop the stale flag and its anchor here, so a missed restore path costs one
+    // frame instead of a block that never comes back.
+    block.repairUnloadedState_();
+
     if (draggedNode && block.getSvgRoot() === draggedNode) {
       block.setIntersects(true);
       continue;
@@ -127,13 +228,15 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     if (!rect) {
       // Safety net: an observed block the workspace table has not seen yet.
       // Measure it now and hand the result to the table for later frames.
+      // Mirrors BlockSvg.getBoundingRectangle, hat overhang included.
       var pos = block.getRelativeToSurfaceXY();
       var size = block.getHeightWidth();
+      var hatOverhang = block.getTopOverhang_();
       rect = {
         left: block.RTL ? pos.x - size.width : pos.x,
-        top: pos.y,
+        top: pos.y - hatOverhang,
         width: size.width,
-        height: size.height
+        height: size.height + hatOverhang
       };
       if (rects) {
         rects.set(block, rect);
@@ -159,6 +262,97 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
       visible = false;
     }
 
+    var wasIntersecting = block.intersects_;
     block.setIntersects(visible);
+
+    if (visible) {
+      if (!wasIntersecting) {
+        restoredCount++;
+      }
+      // A restored block may owe a render: its fields could have been edited
+      // while it was out of the document (see BlockSvg.render).
+      if (block.needsRenderOnReload_) {
+        this.pendingRenders_.push(block);
+      }
+      continue;
+    }
+
+    if (wasIntersecting) {
+      culledCount++;
+    }
+
+    // Offscreen. Only stacks that sit directly on the canvas can leave it: the
+    // drag surface, a parent block and a flyout all need the node in place.
+    if (!canUnload || block.unloaded_ || block === selectedRoot) {
+      continue;
+    }
+    var root = block.getSvgRoot();
+    if (!root || root.parentNode !== canvas) {
+      continue;
+    }
+
+    // Distance from the viewport in screens, normalised per axis and then
+    // maximised. Dividing by the axis that was exceeded keeps a wide, short
+    // viewport from refusing to unload anything above or below it.
+    var left = canvasPos.x + blockPosX;
+    var top = canvasPos.y + blockPosY;
+    var gapX = Math.max(0, left - workspaceWidth, -left - blockWidth);
+    var gapY = Math.max(0, top - workspaceHeight, -top - blockHeight);
+    var distance = Math.max(gapX / workspaceWidth, gapY / workspaceHeight);
+    if (distance > unloadDistance) {
+      if (!candidates) {
+        candidates = [];
+      }
+      candidates.push({block: block, distance: distance});
+    }
+  }
+
+  // Unload the furthest stacks first, within the per-frame budget, so the next
+  // frame already has less work to do.
+  if (candidates) {
+    if (candidates.length > 1) {
+      candidates.sort(function(a, b) {
+        return b.distance - a.distance;
+      });
+    }
+    var limit = Math.min(candidates.length,
+        Blockly.IntersectionObserver.MAX_UNLOAD_PER_FRAME);
+    for (var c = 0; c < limit; c++) {
+      candidates[c].block.setUnloaded_(true);
+      if (candidates[c].block.unloaded_) {
+        unloadedCount++;
+      }
+    }
+  }
+
+  // Blocks that came back owe a render, because their fields may have changed
+  // while they were out of the document. Batch it: render() resizes the content,
+  // and one resize per restored stack rebuilds the scrollbars that many times.
+  if (this.pendingRenders_.length) {
+    var pending = this.pendingRenders_;
+    workspace.beginContentUpdate_();
+    try {
+      for (var p = 0; p < pending.length; p++) {
+        var restoredBlock = pending[p];
+        if (!restoredBlock.workspace || !restoredBlock.needsRenderOnReload_) {
+          continue;
+        }
+        restoredBlock.needsRenderOnReload_ = false;
+        restoredBlock.render();
+      }
+    } finally {
+      workspace.endContentUpdate_();
+    }
+    pending.length = 0;
+  }
+
+  var stats = Blockly.IntersectionObserver.stats;
+  stats.frames++;
+  stats.culled = culledCount;
+  stats.unloaded = unloadedCount;
+  stats.restored = restoredCount;
+  stats.lastMs = (hasPerformance ? performance.now() : Date.now()) - startTime;
+  if (typeof window !== 'undefined') {
+    window.__cullingStats = stats;
   }
 };

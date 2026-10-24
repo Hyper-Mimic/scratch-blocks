@@ -631,6 +631,15 @@ Blockly.BlockSvg.prototype.getHeightWidth = function() {
  *   If true, also render block's parent, grandparent, etc.  Defaults to true.
  */
 Blockly.BlockSvg.prototype.render = function(opt_bubble) {
+  // A detached block cannot measure its text: getComputedTextLength() returns 0
+  // for a node outside the document, which would write a zero width into the
+  // content rect table and shrink the scrollbars for good. Defer the layout, and
+  // remember that the block owes a render so fields changed while it was away
+  // are laid out when it comes back.
+  if (this.unloaded_) {
+    this.needsRenderOnReload_ = true;
+    return;
+  }
   Blockly.Field.startCache();
   this.rendered = true;
   // The block's outline may have changed shape: drop the cached collision
