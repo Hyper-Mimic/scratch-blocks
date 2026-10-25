@@ -305,7 +305,7 @@ Blockly.WorkspaceCommentSvg.prototype.getRelativeToSurfaceXY = function() {
       }
       element = element.parentNode;
     } while (element && element != this.workspace.getBubbleCanvas() &&
-        element != dragSurfaceGroup);
+        element != this.workspace.getCanvas() && element != dragSurfaceGroup);
   }
   this.xy_ = new goog.math.Coordinate(x, y);
   return this.xy_;

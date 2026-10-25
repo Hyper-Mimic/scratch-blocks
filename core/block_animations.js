@@ -28,26 +28,33 @@ goog.provide('Blockly.BlockAnimations');
 
 
 /**
- * Play some UI effects (sound, animation) when disposing of a block.
- * @param {!Blockly.BlockSvg} block The block being disposed of.
+ * Play some UI effects (sound, animation) when disposing of a block or comment.
+ * @param {!Blockly.BlockSvg|!Blockly.WorkspaceCommentSvg} disposable The block
+ *     or comment being disposed of.  Both expose `workspace` and `getSvgRoot()`.
  * @package
  */
-Blockly.BlockAnimations.disposeUiEffect = function(block) {
-  var workspace = block.workspace;
-  var svgGroup = block.getSvgRoot();
-  workspace.getAudioManager().play('delete');
+Blockly.BlockAnimations.disposeUiEffect = function(disposable) {
+  try {
+    var workspace = disposable.workspace;
+    var svgGroup = disposable.getSvgRoot();
+    workspace.getAudioManager().play('delete');
 
-  var xy = workspace.getSvgXY(svgGroup);
-  // Deeply clone the current block.
-  var clone = svgGroup.cloneNode(true);
-  clone.translateX_ = xy.x;
-  clone.translateY_ = xy.y;
-  clone.setAttribute('transform', 'translate(' + xy.x + ',' + xy.y + ')');
-  workspace.getParentSvg().appendChild(clone);
-  clone.bBox_ = clone.getBBox();
-  // Start the animation.
-  Blockly.BlockAnimations.disposeUiStep_(clone, workspace.RTL, new Date,
-      workspace.scale);
+    var xy = workspace.getSvgXY(svgGroup);
+    // Deeply clone the current block.
+    var clone = svgGroup.cloneNode(true);
+    clone.translateX_ = xy.x;
+    clone.translateY_ = xy.y;
+    clone.setAttribute('transform', 'translate(' + xy.x + ',' + xy.y + ')');
+    workspace.getParentSvg().appendChild(clone);
+    clone.bBox_ = clone.getBBox();
+    // Start the animation.
+    Blockly.BlockAnimations.disposeUiStep_(clone, workspace.RTL, new Date,
+        workspace.scale);
+  } catch (e) {
+    // Never let the disposal animation abort the actual deletion of the
+    // block/comment (a <foreignObject> like a comment's textarea can make
+    // getBBox() throw in some browsers).  The sound + removal still happen.
+  }
 };
 
 /**

@@ -201,7 +201,10 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
       workspaceWidth > 0 && workspaceHeight > 0 && workspaceScale > 0;
   var canvas = workspace.getCanvas();
   var selectedRoot = null;
-  if (Blockly.selected && Blockly.selected.workspace === workspace) {
+  // Scratch: Blockly.selected can be a workspace comment (no getRootBlock()).
+  // A comment has no parent stack to keep loaded, so leave selectedRoot null.
+  if (Blockly.selected && typeof Blockly.selected.getRootBlock === 'function' &&
+      Blockly.selected.workspace === workspace) {
     selectedRoot = Blockly.selected.getRootBlock();
   }
   var unloadDistance = Blockly.IntersectionObserver.UNLOAD_SCREENS;

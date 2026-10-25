@@ -29,6 +29,7 @@ goog.provide('Blockly.BubbleDragger');
 goog.require('Blockly.Bubble');
 goog.require('Blockly.Events.CommentMove');
 goog.require('Blockly.WorkspaceCommentSvg');
+goog.require('Blockly.BlockAnimations');
 
 goog.require('goog.math.Coordinate');
 goog.require('goog.asserts');
@@ -151,10 +152,13 @@ Blockly.BubbleDragger.prototype.dragBubble = function(e, currentDragDeltaXY) {
 /**
  * Shut the trash can and, if necessary, delete the dragging bubble.
  * Should be called at the end of a bubble drag.
+ * @param {!goog.math.Coordinate} newLoc The final location of the bubble, in
+ *     workspace coordinates.  Used to land a deleted comment back on the normal
+ *     canvas so the disposal animation is positioned/scaled correctly.
  * @return {boolean} whether the bubble was deleted.
  * @private
  */
-Blockly.BubbleDragger.prototype.maybeDeleteBubble_ = function() {
+Blockly.BubbleDragger.prototype.maybeDeleteBubble_ = function(newLoc) {
   var trashcan = this.workspace_.trashcan;
 
   if (this.wouldDeleteBubble_) {
@@ -163,6 +167,17 @@ Blockly.BubbleDragger.prototype.maybeDeleteBubble_ = function() {
     }
     // Fire a move event, so we know where to go back to for an undo.
     this.fireMoveEvent_();
+    // Scratch: a workspace comment dragged to the flyout/trash should show the
+    // same "shrink + delete sound" effect as a block.  Move it off the drag
+    // surface first so getSvgXY() applies the workspace scale (otherwise the
+    // cloned animation lands at the wrong spot when zoomed), then play the
+    // effect, then dispose the real node (2026-10-25).
+    if (this.draggingBubble_.isComment) {
+      if (this.dragSurface_) {
+        this.draggingBubble_.moveOffDragSurface_(newLoc);
+      }
+      Blockly.BlockAnimations.disposeUiEffect(this.draggingBubble_);
+    }
     this.draggingBubble_.dispose(false, true);
   } else if (trashcan) {
     // Make sure the trash can is closed.
@@ -209,7 +224,7 @@ Blockly.BubbleDragger.prototype.endBubbleDrag = function(
 
   // Move the bubble to its final location.
   this.draggingBubble_.moveTo(newLoc.x, newLoc.y);
-  var deleted = this.maybeDeleteBubble_();
+  var deleted = this.maybeDeleteBubble_(newLoc);
 
   if (!deleted) {
     // Put everything back onto the bubble canvas.

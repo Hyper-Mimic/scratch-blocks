@@ -294,6 +294,40 @@ Blockly.Gesture = function(e, creatorWorkspace) {
    * @private
    */
   this.boxDragTotal_ = null;
+
+  /**
+   * BlockDragger driving the "main block" of a box drag.  When set, the box
+   * drag reuses the normal single-block drag machinery (drag surface,
+   * connection snapping, flyout / trash delete preview).  Null for the legacy
+   * rigid duplicate-drag path (forceStartBoxDrag), which moves blocks without a
+   * BlockDragger.
+   * @type {?Blockly.BlockDragger}
+   * @private
+   */
+  this.blockDragger_ = null;
+
+  /**
+   * Selected blocks that ride along with the main block during a box drag,
+   * and their positions at drag start, in workspace units.
+   * @type {!Array.<!Blockly.BlockSvg>}
+   * @private
+   */
+  this.boxDragFollowerRoots_ = null;
+
+  /**
+   * @type {!Array.<!goog.math.Coordinate>}
+   * @private
+   */
+  this.boxDragFollowerStarts_ = null;
+
+  /**
+   * Whether followers were lifted onto the drag surface (3D supported), so they
+   * render above the flyout like the main block.  When false, followers are
+   * translated rigidly on the workspace canvas instead.
+   * @type {boolean}
+   * @private
+   */
+  this.boxDragUseSurface_ = false;
 };
 
 /**
@@ -572,20 +606,26 @@ Blockly.Gesture.prototype.startDraggingBubble_ = function() {
  * @private
  */
 Blockly.Gesture.prototype.updateBoxGesture_ = function() {
-  if (!this.ctrlHeld_ || this.flyout_ || !this.startWorkspace_ ||
+  if (this.flyout_ || !this.startWorkspace_ ||
       !this.startWorkspace_.options.hasBoxSelect) {
     return false;
   }
   if (this.targetBlock_) {
-    // Ctrl+drag starting on an already-selected block moves the selection.
-    // Ctrl+drag on an unselected block falls through to a normal block drag.
+    // A drag starting on an already-selected block moves the whole selection,
+    // no Ctrl required (2026-10-25): the grabbed block becomes the "main block"
+    // and drives connection snapping + flyout delete, exactly like a normal
+    // single-block drag.  A drag on an unselected block falls through to a normal
+    // single-block drag.
     if (this.startWorkspace_.isBlockBoxSelected(this.targetBlock_)) {
       return this.startBoxDrag_();
     }
     return false;
   }
   // Ctrl+drag on empty workspace draws the selection rectangle.
-  return this.startBoxSelect_();
+  if (this.ctrlHeld_) {
+    return this.startBoxSelect_();
+  }
+  return false;
 };
 
 /**
@@ -886,51 +926,82 @@ Blockly.Gesture.prototype.endBoxSelect_ = function() {
 };
 
 /**
- * Start dragging the current box selection: every selected block moves by the
- * same delta.  Unlike a single block drag this moves the blocks in place: no
- * block drag surface, no connection snapping, no bumping.  The selection
- * moves rigidly, which is what a group drag means here.
+ * Start dragging the current box selection.  The grabbed block becomes the
+ * "main block" (主积木): the topmost SELECTED block in the chain above the grabbed
+ * block, plus the sub-stack physically attached BELOW it, are dragged through the
+ * normal BlockDragger, so they get the drag surface (render ABOVE the flyout),
+ * connection snapping (the "can connect" shadow above / below / inside another
+ * block) and the flyout / trash delete preview — exactly like dragging a single
+ * block.  Walking up to the selected root means dragging any block of a fully
+ * selected stack moves the WHOLE stack, while grabbing a block below a deselected
+ * (excluded) block moves only from that excluded boundary downward (2026-10-25).
+ * Every other selected block rides along rigidly as a "follower", lifted onto the
+ * same drag surface so it also sits above the flyout.
  *
- * The drag unit is exactly the box selection: a block only takes its
- * input-/statement-nested children (everything inside it).  Its trailing
- * statement chain (the blocks below it on the stack) is taken ONLY when those
- * blocks were themselves selected; otherwise the unselected block below is
- * detached and stays put, so dragging one block out of the middle of a stack
- * tears it out instead of stretching the connections.  The unit is computed by
- * scratchBlocksUtils.collectUnit_, which follows input/statement nesting (and
- * the next chains inside statement bodies) but stops at the block's own next
- * connection (2026-10-17).
+ * The follower unit is exactly the box selection minus the main block's subtree:
+ * a selected block keeps its input-/statement-nested children but NOT its
+ * unselected below-sibling, computed by scratchBlocksUtils.collectUnit_
+ * (2026-10-17).  Followers chained to the main block (or each other) keep their
+ * connection so a contiguous selection stays together (2026-10-25).
  * @return {boolean} True if the drag started, false if nothing is draggable.
  * @private
  */
 Blockly.Gesture.prototype.startBoxDrag_ = function() {
   var ws = this.startWorkspace_;
-  var moveSet = new Set();
-  ws.getBoxSelection().forEach(function(block) {
-    if (block.workspace !== ws || !block.isMovable() || !block.getSvgRoot()) {
-      return;
-    }
-    // A selected block drags as a unit with everything nested inside it (input
-    // values and statement bodies, including the next chains within those
-    // bodies), but NOT the blocks below it on its own next connection — those
-    // only come along if they were selected too (2026-10-17: previously a
-    // getDescendants + getNextBlock loop pulled the whole stack below a single
-    // selected block along for the ride).
-    Blockly.scratchBlocksUtils.collectUnit_(block, moveSet, false);
-  });
-  if (!moveSet.size) {
-    return false;
-  }
-  // Detach anything whose parent stays behind, mirroring BlockDragger's unplug
-  // for a single dragged block.  Also detach a trailing next block that was NOT
-  // selected, so dragging one block out of the middle of a stack tears it out
-  // instead of stretching the connections.  The next block is left attached when
-  // it is itself part of the unit (e.g. a statement body continuation), so the
-  // inside of a C-block still moves as one piece.
+  var self = this;
   if (!Blockly.Events.getGroup()) {
     Blockly.Events.setGroup(true);
   }
-  moveSet.forEach(function(block) {
+  ws.setResizesEnabled(false);
+
+  // The "main block" (主积木) is the TOPMOST SELECTED block in the chain above
+  // the grabbed block: walk up through parents that are also box-selected.  This
+  // keeps the main block's parent OUTSIDE the moving group, so BlockDragger's
+  // unplug() never tears a kept connection apart.  Without the walk-up, grabbing
+  // a selected block whose parent was also selected (e.g. dragging a middle block
+  // of a fully box-selected stack, or after deselecting only the blocks ABOVE a
+  // grabbed one) made BlockDragger.unplug() sever the parent link and split the
+  // stack into two disconnected pieces on drop — the bug reported 2026-10-25.
+  // Walking up to the selected root also means dragging any block of a fully
+  // selected stack moves the whole stack, which is the intuitive behaviour.
+  var main = this.targetBlock_;
+  while (main.getParent() &&
+         this.startWorkspace_.isBlockBoxSelected(main.getParent())) {
+    main = main.getParent();
+  }
+  if (!main.isMovable() || !main.getSvgRoot()) {
+    ws.setResizesEnabled(true);
+    if (Blockly.Events.getGroup()) {
+      Blockly.Events.setGroup(false);
+    }
+    return false;
+  }
+
+  // Blocks that move with the main block through the BlockDragger: the main block
+  // and everything connected below / inside it (its sub-stack).
+  var mainStack = new Set(main.getDescendants(true));
+
+  // Every other selected block is a "follower" that rides along rigidly on the
+  // same drag surface.  A follower drags itself and its input/statement-nested
+  // children (collectUnit_), but not the unselected sibling below it.
+  var followerSet = new Set();
+  ws.getBoxSelection().forEach(function(block) {
+    if (mainStack.has(block) || !block.isMovable() || !block.getSvgRoot()) {
+      return;
+    }
+    Blockly.scratchBlocksUtils.collectUnit_(block, followerSet, false);
+  });
+
+  // The full set of blocks that should end up moving.  A follower is detached
+  // from its parent / trailing next block only when that block is NOT part of the
+  // moving group — so the grabbed block's own parent above stays put, an
+  // unselected sibling below stays put, and a follower that is physically chained
+  // to the main block (or another follower) KEEPS its connection.  The previous
+  // check only looked at followerSet and wrongly tore followers off the main
+  // block (e.g. grabbing block 4 when 3→4 are both selected, 2026-10-25).
+  var moveSet = new Set(mainStack);
+  followerSet.forEach(function(b) { moveSet.add(b); });
+  followerSet.forEach(function(block) {
     var parent = block.getParent();
     if (parent && !moveSet.has(parent)) {
       block.unplug();
@@ -940,36 +1011,98 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
       block.nextConnection.disconnect();
     }
   });
-  this.boxDragBlocks_ = [];
-  var self = this;
-  moveSet.forEach(function(block) {
-    self.boxDragBlocks_.push(block);
+
+  // The main block drags via the normal BlockDragger: drag surface (above the
+  // flyout), connection snapping, and flyout / trash delete preview.
+  this.blockDragger_ = new Blockly.BlockDragger(main, ws);
+  this.blockDragger_.startBlockDrag(this.currentDragDeltaXY_);
+
+  // Followers ride along rigidly on the workspace canvas (the proven legacy
+  // path).  They are deliberately NOT lifted onto the BlockDragger drag surface:
+  // that surface's dragGroup_ carries a drop-shadow <filter> (feGaussianBlur +
+  // feComposite) for the whole group, and when the selection spans a tall area
+  // (e.g. a block far ABOVE the grabbed one, exactly the "分段框选" case) the
+  // filter's region is stretched past the browser's per-filter size limit, which
+  // clips the "upper" followers out of existence during the drag (they reappear
+  // on drop because they live on the canvas, not the surface).  Keeping followers
+  // on the canvas means no filter / no clipping, so they are always visible
+  // (2026-10-25).  The main block still rides the real drag surface, so it keeps
+  // layer-above-flyout, connection snapping and the flyout/trash delete preview
+  // (requirements #2/#3); followers only render BELOW the flyout, which only
+  // matters while hovering the flyout (deletion is driven by the main block).
+  this.boxDragFollowerRoots_ = [];
+  this.boxDragFollowerStarts_ = [];
+  this.boxDragUseSurface_ = false;
+  followerSet.forEach(function(block) {
+    // Only top-level workspace roots are moved; nested followers ride along with
+    // their root parent (also in followerSet).
+    if (block.getParent() || block.workspace !== ws) {
+      return;
+    }
+    block.setDragging(true);
+    self.boxDragFollowerRoots_.push(block);
+    self.boxDragFollowerStarts_.push(block.getRelativeToSurfaceXY());
   });
-  this.boxDragOrigins_ = this.boxDragBlocks_.map(function(block) {
-    return block.getRelativeToSurfaceXY();
-  });
+
   this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
   this.isBoxDragging_ = true;
-  // Suppress per-move workspace resizes, same as BlockDragger.startBlockDrag.
-  ws.setResizesEnabled(false);
   return true;
 };
 
 /**
- * Move the box-selected stacks by the current drag delta.
+ * Move the box-selected stacks by the current drag delta.  When a BlockDragger is
+ * driving the main block (user-driven box drag), the BlockDragger handles the main
+ * stack (connection snapping, flyout delete) and the followers ride along on the
+ * drag surface; otherwise (legacy rigid duplicate-drag) every block is translated
+ * rigidly on the canvas.
  * @param {!goog.math.Coordinate} currentDragDeltaXY Total drag delta in pixel
  *     units, relative to the gesture start.
  * @private
  */
 Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
   var ws = this.startWorkspace_;
-  // Pixel delta -> workspace units (the canvas transform scales by ws.scale).
-  var total = new goog.math.Coordinate(
+  if (this.blockDragger_) {
+    // Main stack: full BlockDragger behaviour (connection snapping, flyout delete
+    // preview).  This also translates the drag surface SVG, carrying the
+    // followers along with the main stack automatically.
+    this.blockDragger_.dragBlock(this.mostRecentEvent_, currentDragDeltaXY);
+
+    // Mirror the main block's delete preview on every follower so the whole
+    // selection reads as "about to be deleted" when over the flyout / trash.
+    var deleting = this.blockDragger_.wouldDeleteBlock_;
+    for (var f = 0; f < this.boxDragFollowerRoots_.length; f++) {
+      this.boxDragFollowerRoots_[f].setDeleteStyle(deleting);
+    }
+
+    if (!this.boxDragUseSurface_) {
+      // Fallback: translate followers rigidly on the workspace canvas.
+      var total = new goog.math.Coordinate(
+          currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
+      var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
+      this.boxDragTotal_ = total;
+      for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
+        var block = this.boxDragFollowerRoots_[i];
+        if (block.getParent()) {
+          continue;
+        }
+        var origin = this.boxDragFollowerStarts_[i];
+        block.translate(origin.x + total.x, origin.y + total.y);
+        block.moveConnections_(delta.x, delta.y);
+        ws.invalidateContentBounds_(block.getRootBlock());
+      }
+    }
+    ws.queueIntersectionCheck();
+    return;
+  }
+
+  // Legacy rigid path (forceStartBoxDrag / duplicate-drag): every block moves by
+  // the same delta, no connection snapping.
+  var total2 = new goog.math.Coordinate(
       currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
-  var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
-  this.boxDragTotal_ = total;
-  for (var i = 0; i < this.boxDragBlocks_.length; i++) {
-    var block = this.boxDragBlocks_[i];
+  var delta2 = goog.math.Coordinate.difference(total2, this.boxDragTotal_);
+  this.boxDragTotal_ = total2;
+  for (var k = 0; k < this.boxDragBlocks_.length; k++) {
+    var b = this.boxDragBlocks_[k];
     // In this fork every block's svgGroup is nested inside its parent's group, so
     // a nested child is positioned RELATIVE to its parent, not in absolute
     // surface coordinates. Translating a child by its absolute surface origin
@@ -978,47 +1111,115 @@ Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
     // nested children ride along with the parent group, and moveConnections_
     // below recurses into them to keep their connection DB in sync. This mirrors
     // BlockDragger, which only translates root blocks (2026-10-17).
-    if (block.getParent()) {
+    if (b.getParent()) {
       continue;
     }
-    var origin = this.boxDragOrigins_[i];
-    // translate() takes an absolute position and fires no events;
-    // moveConnections_ keeps the connection database in sync with the delta.
-    block.translate(origin.x + total.x, origin.y + total.y);
-    block.moveConnections_(delta.x, delta.y);
-    // The stack moved: drop its cached rects so viewport culling stays correct.
-    ws.invalidateContentBounds_(block.getRootBlock());
+    var origin2 = this.boxDragOrigins_[k];
+    b.translate(origin2.x + total2.x, origin2.y + total2.y);
+    b.moveConnections_(delta2.x, delta2.y);
+    ws.invalidateContentBounds_(b.getRootBlock());
   }
-  // Keep culling fresh while the selection moves, same as BlockDragger
-  // (PATCH 8 in BlockDragger.dragBlock).
   ws.queueIntersectionCheck();
 };
 
 /**
- * End a box drag: fire one move event per moved top-level block so the VM and
- * the undo stack see the new positions, then re-enable workspace resizes.
+ * End a box drag.  When a BlockDragger drove the main block (user-driven box
+ * drag), let it finish (apply connections or delete the main stack), after first
+ * taking the followers off the drag surface.  Otherwise (legacy rigid
+ * duplicate-drag) fire one move event per moved top-level block and re-enable
+ * workspace resizes.
  * @private
  */
 Blockly.Gesture.prototype.endBoxDrag_ = function() {
   var ws = this.startWorkspace_;
-  if (Blockly.Events.isEnabled()) {
-    for (var i = 0; i < this.boxDragBlocks_.length; i++) {
-      var block = this.boxDragBlocks_[i];
-      // Only top-level blocks carry a meaningful workspace position; nested
-      // blocks moved with their parent (same as a single block drag's
-      // fireMoveEvent_, which reports the dragged root only).
-      if (block.getParent()) {
+  var e = this.mostRecentEvent_;
+  if (this.blockDragger_) {
+    // If the main block would be deleted (e.g. dropped on the flyout / trash),
+    // delete the whole selection too.
+    var willDelete = this.blockDragger_.wouldDeleteBlock_;
+    var total = new goog.math.Coordinate(
+        this.currentDragDeltaXY_.x / ws.scale,
+        this.currentDragDeltaXY_.y / ws.scale);
+
+    // Take followers off the drag surface (or finalize their canvas position)
+    // before the main BlockDragger's clearAndHide, which asserts an empty surface.
+    for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
+      var block = this.boxDragFollowerRoots_[i];
+      var start = this.boxDragFollowerStarts_[i];
+      if (willDelete) {
+        // Only detach from the surface if the follower is actually still a child
+        // of it; otherwise removeChild would throw and skip the marker cleanup
+        // below (leaving the ghost block behind).
+        if (this.boxDragUseSurface_ &&
+            block.getSvgRoot().parentNode === ws.blockDragSurface_.getGroup()) {
+          ws.blockDragSurface_.getGroup().removeChild(block.getSvgRoot());
+        }
+        // Clear the global dragging set (added via setDragging(true) above) so it
+        // does not leak stale connections into the next drag.
+        block.setDragging(false);
+        block.dispose(false, true);
         continue;
       }
+      if (this.boxDragUseSurface_) {
+        // Lift back onto the workspace canvas at the new position.
+        ws.getCanvas().appendChild(block.getSvgRoot());
+        block.translate(start.x + total.x, start.y + total.y);
+        block.moveConnections_(total.x, total.y);
+      }
+      // The connection DB is already current in the canvas-fallback path (updated
+      // per move); in the surface path it was just moved to final above.
+      block.setDragging(false);
+      block.render();
       var event = new Blockly.Events.BlockMove(block);
-      event.oldCoordinate = this.boxDragOrigins_[i];
+      event.oldCoordinate = start;
       event.recordNew();
       Blockly.Events.fire(event);
     }
+    this.boxDragFollowerRoots_ = null;
+    this.boxDragFollowerStarts_ = null;
+
+    // Main stack: let BlockDragger finish (apply connections or delete).
+    // IMPORTANT: dispose the dragger inside a finally so its
+    // InsertionMarkerManager — the "can connect" ghost block (an empty
+    // control_repeat etc.) — is ALWAYS torn down and removed from the workspace,
+    // even if endBlockDrag throws (e.g. a drag-surface assertion, or a follower
+    // still sitting on the surface). Without this the ghost leaks as a real,
+    // persisted orphan block. The normal block-drag path reaches this via
+    // Gesture.dispose(); but here we null this.blockDragger_ ourselves, so the
+    // later Gesture.dispose() sees null and would skip it (2026-10-25).
+    try {
+      this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
+    } finally {
+      if (this.blockDragger_) {
+        this.blockDragger_.dispose();
+        this.blockDragger_ = null;
+      }
+    }
+
+    this.isBoxDragging_ = false;
+    ws.queueIntersectionCheck();
+    return;
   }
-  for (var j = 0; j < this.boxDragBlocks_.length; j++) {
-    if (!this.boxDragBlocks_[j].getParent()) {
-      ws.resizeContents(this.boxDragBlocks_[j].getRootBlock());
+
+  // Legacy rigid path (forceStartBoxDrag / duplicate-drag).
+  if (Blockly.Events.isEnabled()) {
+    for (var m = 0; m < this.boxDragBlocks_.length; m++) {
+      var b = this.boxDragBlocks_[m];
+      // Only top-level blocks carry a meaningful workspace position; nested
+      // blocks moved with their parent (same as a single block drag's
+      // fireMoveEvent_, which reports the dragged root only).
+      if (b.getParent()) {
+        continue;
+      }
+      var ev = new Blockly.Events.BlockMove(b);
+      ev.oldCoordinate = this.boxDragOrigins_[m];
+      ev.recordNew();
+      Blockly.Events.fire(ev);
+    }
+  }
+  for (var n = 0; n < this.boxDragBlocks_.length; n++) {
+    if (!this.boxDragBlocks_[n].getParent()) {
+      ws.resizeContents(this.boxDragBlocks_[n].getRootBlock());
     }
   }
   this.boxDragBlocks_ = null;
@@ -1139,7 +1340,8 @@ Blockly.Gesture.prototype.doStart = function(e) {
   // any existing box selection is dropped.  Ctrl+drag starting on a selected
   // block keeps the selection and drags it instead (see updateBoxGesture_).
   if (this.targetBlock_ && !this.ctrlHeld_ && this.startWorkspace_ &&
-      this.startWorkspace_.clearBoxSelection) {
+      this.startWorkspace_.clearBoxSelection &&
+      !this.startWorkspace_.isBlockBoxSelected(this.targetBlock_)) {
     this.startWorkspace_.clearBoxSelection();
   }
 
