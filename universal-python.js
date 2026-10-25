@@ -7,6 +7,14 @@
 var child_process = require('child_process');
 var _which = require('which');
 
+// Force every Python child process into UTF-8 mode. Our source files are UTF-8,
+// but on systems whose default text encoding is not UTF-8 (e.g. GBK on Chinese-
+// locale Windows), calcdeps.py crashes with a UnicodeDecodeError when it hits a
+// non-ASCII character (e.g. an em-dash) in a comment. Python 3.7+ reads
+// PYTHONUTF8 at startup; setting it here (instead of in package.json) keeps the
+// build working on every platform without relying on shell-specific syntax.
+process.env.PYTHONUTF8 = '1';
+
 function which(command) {
   return _which.sync(command, {
     nothrow: true
