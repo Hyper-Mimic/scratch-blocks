@@ -119,10 +119,12 @@ Blockly.IntersectionObserver.prototype.canUnloadStacks_ = function() {
   if (!workspace || !workspace.viewportCullingEnabled_) {
     return false;
   }
-  // A flyout keeps its blocks in the document on purpose: it inserts background
-  // rectangles relative to them and measures itself with getBBox(), which only
-  // counts attached nodes. A mutator does the same. Both keep the display:none
-  // culling that happens before this gate.
+  // A flyout and a mutator keep every block in the document *and* visible: they
+  // insert background rectangles relative to the blocks and measure themselves
+  // with getBBox(), which only counts attached, rendered nodes. They are now
+  // fully excluded from culling by the early guard in checkForIntersections
+  // (which also restores any block a prior pass had hidden). This gate is a
+  // redundant safety net in case that guard is bypassed.
   if (workspace.isFlyout || workspace.isMutator) {
     return false;
   }
@@ -152,6 +154,21 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   this.intersectionCheckQueued = false;
 
   if (!this.workspace) {
+    return;
+  }
+
+  // A flyout and a mutator keep every block in the document *and* visible: they
+  // measure themselves with getBBox() and attach background rectangles to the
+  // blocks, both of which break once a node is display:none'd or moved out of
+  // the document. The main workspace is the only one that benefits from viewport
+  // culling. viewportCullingEnabled_ also gates the display:none pass here (not
+  // just the unload pass in canUnloadStacks_), so disabling it fully restores
+  // the workspace. Anything a previous pass hid is shown again.
+  if (this.workspace.isFlyout || this.workspace.isMutator ||
+      !this.workspace.viewportCullingEnabled_) {
+    for (var i = 0; i < this.observing.length; i++) {
+      this.observing[i].setIntersects(true);
+    }
     return;
   }
 
