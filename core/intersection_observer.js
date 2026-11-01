@@ -244,6 +244,18 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
       continue;
     }
 
+    // PATCH (2026-11-02): a box drag's follower blocks live on the flyout-top
+    // follower surface, not under the dragged main block, so the draggedNode
+    // check above does not cover them.  Dragging the selection against a screen
+    // edge moves their (real, already-updated) rects outside the view, and this
+    // pass would hide them mid-drag.  The gesture flags every block that takes
+    // part in an active box drag on the workspace; skip those too.
+    if (workspace.boxDragActiveBlocks_ &&
+        workspace.boxDragActiveBlocks_.has(block)) {
+      block.setIntersects(true);
+      continue;
+    }
+
     var rect = rects && rects.get(block);
     if (!rect) {
       // Safety net: an observed block the workspace table has not seen yet.
