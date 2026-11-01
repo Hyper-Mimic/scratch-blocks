@@ -321,13 +321,16 @@ Blockly.Gesture = function(e, creatorWorkspace) {
   this.boxDragFollowerStarts_ = null;
 
   /**
-   * Whether followers were lifted onto the drag surface (3D supported), so they
-   * render above the flyout like the main block.  When false, followers are
-   * translated rigidly on the workspace canvas instead.
-   * @type {boolean}
+   * A <g> layer placed above the flyout (appended to the workspace's parent
+   * <svg>, after the flyout svg) that the box-drag "follower" blocks are lifted
+   * into during a drag.  It mirrors the canvas transform (scroll + scale) so the
+   * followers stay aligned with the rest of the workspace, and because it paints
+   * on top of the flyout the whole selection reads as "above the flyout" like a
+   * normal single-block drag.  Null except while a box drag is active.
+   * @type {?Element}
    * @private
    */
-  this.boxDragUseSurface_ = false;
+  this.boxDragFollowerLayer_ = null;
 };
 
 /**
@@ -377,6 +380,14 @@ Blockly.Gesture.prototype.dispose = function() {
   this.boxDragBlocks_ = null;
   this.boxDragOrigins_ = null;
   this.boxDragTotal_ = null;
+  // A box drag can be disposed mid-flight (e.g. input steals focus); tear down
+  // the flyout-top follower layer so it does not linger in the DOM.
+  if (this.boxDragFollowerLayer_ && this.boxDragFollowerLayer_.parentNode) {
+    this.boxDragFollowerLayer_.parentNode.removeChild(this.boxDragFollowerLayer_);
+  }
+  this.boxDragFollowerLayer_ = null;
+  this.boxDragFollowerRoots_ = null;
+  this.boxDragFollowerStarts_ = null;
 };
 
 /**
@@ -1017,31 +1028,38 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
   this.blockDragger_ = new Blockly.BlockDragger(main, ws);
   this.blockDragger_.startBlockDrag(this.currentDragDeltaXY_);
 
-  // Followers ride along rigidly on the workspace canvas (the proven legacy
-  // path).  They are deliberately NOT lifted onto the BlockDragger drag surface:
+  // Followers are lifted onto a dedicated layer that sits ABOVE the flyout (see
+  // boxDragFollowerLayer_).  They are NOT put on the BlockDragger drag surface:
   // that surface's dragGroup_ carries a drop-shadow <filter> (feGaussianBlur +
-  // feComposite) for the whole group, and when the selection spans a tall area
-  // (e.g. a block far ABOVE the grabbed one, exactly the "分段框选" case) the
-  // filter's region is stretched past the browser's per-filter size limit, which
-  // clips the "upper" followers out of existence during the drag (they reappear
-  // on drop because they live on the canvas, not the surface).  Keeping followers
-  // on the canvas means no filter / no clipping, so they are always visible
-  // (2026-10-25).  The main block still rides the real drag surface, so it keeps
-  // layer-above-flyout, connection snapping and the flyout/trash delete preview
-  // (requirements #2/#3); followers only render BELOW the flyout, which only
-  // matters while hovering the flyout (deletion is driven by the main block).
+  // feComposite) over the whole group, and when the selection spans a tall area
+  // (e.g. a block far ABOVE the grabbed one, the "分段框选" case) the filter
+  // region stretches past the browser's per-filter size limit and clips the
+  // "upper" followers out of existence mid-drag.  A separate flyout-top layer has
+  // no filter, so followers stay visible AND above the flyout (2026-11-01).  The
+  // layer mirrors the canvas transform (scroll + scale) so workspace-coordinate
+  // translates keep followers aligned with the main block, which still rides the
+  // real drag surface for connection snapping and flyout/trash delete preview.
   this.boxDragFollowerRoots_ = [];
   this.boxDragFollowerStarts_ = [];
-  this.boxDragUseSurface_ = false;
+  var followerLayerTransform = ws.getCanvas().getAttribute('transform');
+  this.boxDragFollowerLayer_ =
+      Blockly.utils.createSvgElement('g', {}, ws.getParentSvg());
+  if (followerLayerTransform) {
+    this.boxDragFollowerLayer_.setAttribute('transform', followerLayerTransform);
+  }
   followerSet.forEach(function(block) {
     // Only top-level workspace roots are moved; nested followers ride along with
     // their root parent (also in followerSet).
     if (block.getParent() || block.workspace !== ws) {
       return;
     }
+    // Capture the start position while the block is still on the canvas, then
+    // lift it onto the flyout-top layer.
+    var origin = block.getRelativeToSurfaceXY();
     block.setDragging(true);
     self.boxDragFollowerRoots_.push(block);
-    self.boxDragFollowerStarts_.push(block.getRelativeToSurfaceXY());
+    self.boxDragFollowerStarts_.push(origin);
+    self.boxDragFollowerLayer_.appendChild(block.getSvgRoot());
   });
 
   this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
@@ -1074,22 +1092,27 @@ Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
       this.boxDragFollowerRoots_[f].setDeleteStyle(deleting);
     }
 
-    if (!this.boxDragUseSurface_) {
-      // Fallback: translate followers rigidly on the workspace canvas.
-      var total = new goog.math.Coordinate(
-          currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
-      var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
-      this.boxDragTotal_ = total;
-      for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
-        var block = this.boxDragFollowerRoots_[i];
-        if (block.getParent()) {
-          continue;
-        }
-        var origin = this.boxDragFollowerStarts_[i];
-        block.translate(origin.x + total.x, origin.y + total.y);
-        block.moveConnections_(delta.x, delta.y);
-        ws.invalidateContentBounds_(block.getRootBlock());
+    // Followers ride along rigidly on the flyout-top layer (no blur filter, so
+    // they stay above the flyout and are never clipped).  Re-sync the layer
+    // transform with the canvas each move so a pan/zoom mid-drag keeps them
+    // aligned with the main block.
+    var total = new goog.math.Coordinate(
+        currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
+    var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
+    this.boxDragTotal_ = total;
+    var layerTransform = ws.getCanvas().getAttribute('transform');
+    if (layerTransform) {
+      this.boxDragFollowerLayer_.setAttribute('transform', layerTransform);
+    }
+    for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
+      var block = this.boxDragFollowerRoots_[i];
+      if (block.getParent()) {
+        continue;
       }
+      var origin = this.boxDragFollowerStarts_[i];
+      block.translate(origin.x + total.x, origin.y + total.y);
+      block.moveConnections_(delta.x, delta.y);
+      ws.invalidateContentBounds_(block.getRootBlock());
     }
     ws.queueIntersectionCheck();
     return;
@@ -1141,33 +1164,24 @@ Blockly.Gesture.prototype.endBoxDrag_ = function() {
         this.currentDragDeltaXY_.x / ws.scale,
         this.currentDragDeltaXY_.y / ws.scale);
 
-    // Take followers off the drag surface (or finalize their canvas position)
+    // Take followers off the flyout-top layer (or finalize their canvas position)
     // before the main BlockDragger's clearAndHide, which asserts an empty surface.
     for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
       var block = this.boxDragFollowerRoots_[i];
       var start = this.boxDragFollowerStarts_[i];
       if (willDelete) {
-        // Only detach from the surface if the follower is actually still a child
-        // of it; otherwise removeChild would throw and skip the marker cleanup
-        // below (leaving the ghost block behind).
-        if (this.boxDragUseSurface_ &&
-            block.getSvgRoot().parentNode === ws.blockDragSurface_.getGroup()) {
-          ws.blockDragSurface_.getGroup().removeChild(block.getSvgRoot());
-        }
         // Clear the global dragging set (added via setDragging(true) above) so it
         // does not leak stale connections into the next drag.
         block.setDragging(false);
         block.dispose(false, true);
         continue;
       }
-      if (this.boxDragUseSurface_) {
-        // Lift back onto the workspace canvas at the new position.
-        ws.getCanvas().appendChild(block.getSvgRoot());
-        block.translate(start.x + total.x, start.y + total.y);
-        block.moveConnections_(total.x, total.y);
-      }
-      // The connection DB is already current in the canvas-fallback path (updated
-      // per move); in the surface path it was just moved to final above.
+      // The connection DB is already current from the per-move updates above
+      // (spacebar-free incremental moveConnections_), so do NOT re-apply the full
+      // delta here or the connections would be offset twice.  Just drop the
+      // follower back onto the workspace canvas at its final position.
+      ws.getCanvas().appendChild(block.getSvgRoot());
+      block.translate(start.x + total.x, start.y + total.y);
       block.setDragging(false);
       block.render();
       var event = new Blockly.Events.BlockMove(block);
@@ -1175,6 +1189,11 @@ Blockly.Gesture.prototype.endBoxDrag_ = function() {
       event.recordNew();
       Blockly.Events.fire(event);
     }
+    // Tear down the flyout-top follower layer.
+    if (this.boxDragFollowerLayer_ && this.boxDragFollowerLayer_.parentNode) {
+      this.boxDragFollowerLayer_.parentNode.removeChild(this.boxDragFollowerLayer_);
+    }
+    this.boxDragFollowerLayer_ = null;
     this.boxDragFollowerRoots_ = null;
     this.boxDragFollowerStarts_ = null;
 
