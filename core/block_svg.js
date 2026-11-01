@@ -938,6 +938,11 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
     var selection = Array.from(ws.getBoxSelection());
     menuOptions.push(Blockly.ContextMenu.selectionDuplicateOption(selection, e));
     menuOptions.push(Blockly.ContextMenu.selectionDeleteOption(selection));
+    // Allow the host application to append its own options to the
+    // box-selection menu (the GUI adds "Add Selection to Backpack").
+    if (Blockly.boxSelectionExtraOptions) {
+      Blockly.boxSelectionExtraOptions(menuOptions, selection, block);
+    }
   } else if (this.isDeletable() && this.isMovable() && !block.isInFlyout) {
     menuOptions.push(
         Blockly.ContextMenu.blockDuplicateOption(block, e));
