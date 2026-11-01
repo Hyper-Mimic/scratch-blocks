@@ -299,8 +299,8 @@ Blockly.Gesture = function(e, creatorWorkspace) {
    * BlockDragger driving the "main block" of a box drag.  When set, the box
    * drag reuses the normal single-block drag machinery (drag surface,
    * connection snapping, flyout / trash delete preview).  Null for the legacy
-   * rigid duplicate-drag path (forceStartBoxDrag), which moves blocks without a
-   * BlockDragger.
+   * rigid fallback of forceStartBoxDrag (immovable main block), which moves
+   * blocks without a BlockDragger.
    * @type {?Blockly.BlockDragger}
    * @private
    */
@@ -321,12 +321,24 @@ Blockly.Gesture = function(e, creatorWorkspace) {
   this.boxDragFollowerStarts_ = null;
 
   /**
-   * A <g> layer placed above the flyout (appended to the workspace's parent
-   * <svg>, after the flyout svg) that the box-drag "follower" blocks are lifted
-   * into during a drag.  It mirrors the canvas transform (scroll + scale) so the
-   * followers stay aligned with the rest of the workspace, and because it paints
-   * on top of the flyout the whole selection reads as "above the flyout" like a
-   * normal single-block drag.  Null except while a box drag is active.
+   * A dedicated surface <svg> (a sibling of the workspace / flyout / drag
+   * surface svgs inside the injection div, z-index 45) that holds the box-drag
+   * "follower" blocks during a drag.  It must NOT live inside the workspace
+   * svg: the flyout is a sibling <svg> inserted after the workspace svg (see
+   * inject.js addFlyout_ / toolbox.js insertSiblingAfter), so a layer inside
+   * the workspace svg paints below the flyout.  The surface carries no blur
+   * filter (so tall selections are never clipped) and has pointer-events:none.
+   * Null except while a box drag is active.
+   * @type {?Element}
+   * @private
+   */
+  this.boxDragFollowerSurface_ = null;
+
+  /**
+   * The <g> inside boxDragFollowerSurface_.  It mirrors the canvas transform
+   * (scroll + scale) so the followers stay aligned with the rest of the
+   * workspace, and because the surface paints on top of the flyout the whole
+   * selection reads as "above the flyout" like a normal single-block drag.
    * @type {?Element}
    * @private
    */
@@ -381,11 +393,8 @@ Blockly.Gesture.prototype.dispose = function() {
   this.boxDragOrigins_ = null;
   this.boxDragTotal_ = null;
   // A box drag can be disposed mid-flight (e.g. input steals focus); tear down
-  // the flyout-top follower layer so it does not linger in the DOM.
-  if (this.boxDragFollowerLayer_ && this.boxDragFollowerLayer_.parentNode) {
-    this.boxDragFollowerLayer_.parentNode.removeChild(this.boxDragFollowerLayer_);
-  }
-  this.boxDragFollowerLayer_ = null;
+  // the follower surface so it does not linger in the DOM.
+  this.teardownBoxDragFollowerLayer_();
   this.boxDragFollowerRoots_ = null;
   this.boxDragFollowerStarts_ = null;
 };
@@ -616,18 +625,41 @@ Blockly.Gesture.prototype.startDraggingBubble_ = function() {
  * @return {boolean} true if a box gesture was started.
  * @private
  */
+/**
+ * Whether the gesture's target block belongs to the current box selection.
+ * A block "belongs" if it is box-selected directly, or if its top-level root
+ * block is (i.e. the grab landed on a child block inside a box-selected stack,
+ * e.g. a block chained on a selected root's next connection — a rubber band only
+ * claims each stack's top root, never its trailing next-chain).  Such a grab must
+ * keep the selection and drag the whole group rather than clearing it (2026-11-02).
+ * @return {boolean}
+ * @private
+ */
+Blockly.Gesture.prototype.isTargetBoxSelected_ = function() {
+  var ws = this.startWorkspace_;
+  var b = this.targetBlock_;
+  if (!ws || !b || !ws.isBlockBoxSelected) {
+    return false;
+  }
+  if (ws.isBlockBoxSelected(b)) {
+    return true;
+  }
+  var root = b.getRootBlock();
+  return !!root && root !== b && ws.isBlockBoxSelected(root);
+};
+
 Blockly.Gesture.prototype.updateBoxGesture_ = function() {
   if (this.flyout_ || !this.startWorkspace_ ||
       !this.startWorkspace_.options.hasBoxSelect) {
     return false;
   }
   if (this.targetBlock_) {
-    // A drag starting on an already-selected block moves the whole selection,
-    // no Ctrl required (2026-10-25): the grabbed block becomes the "main block"
-    // and drives connection snapping + flyout delete, exactly like a normal
-    // single-block drag.  A drag on an unselected block falls through to a normal
-    // single-block drag.
-    if (this.startWorkspace_.isBlockBoxSelected(this.targetBlock_)) {
+    // A drag starting on a block that belongs to the box selection moves the
+    // whole selection, no Ctrl required (2026-10-25 / 2026-11-02): the grabbed
+    // block (or its root) becomes the "main block" and drives connection snapping
+    // + flyout delete, exactly like a normal single-block drag.  A drag on a block
+    // outside the selection falls through to a normal single-block drag.
+    if (this.isTargetBoxSelected_()) {
       return this.startBoxDrag_();
     }
     return false;
@@ -1022,28 +1054,47 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
       block.nextConnection.disconnect();
     }
   });
+  // Flag every moving block on the workspace so the viewport-culling pass
+  // (IntersectionObserver.checkForIntersections) skips them: dragging the
+  // selection against a screen edge must never hide the followers mid-drag
+  // (2026-11-02).  Cleared in teardownBoxDragFollowerLayer_.
+  ws.boxDragActiveBlocks_ = moveSet;
 
   // The main block drags via the normal BlockDragger: drag surface (above the
   // flyout), connection snapping, and flyout / trash delete preview.
   this.blockDragger_ = new Blockly.BlockDragger(main, ws);
   this.blockDragger_.startBlockDrag(this.currentDragDeltaXY_);
 
-  // Followers are lifted onto a dedicated layer that sits ABOVE the flyout (see
-  // boxDragFollowerLayer_).  They are NOT put on the BlockDragger drag surface:
-  // that surface's dragGroup_ carries a drop-shadow <filter> (feGaussianBlur +
-  // feComposite) over the whole group, and when the selection spans a tall area
-  // (e.g. a block far ABOVE the grabbed one, the "分段框选" case) the filter
-  // region stretches past the browser's per-filter size limit and clips the
-  // "upper" followers out of existence mid-drag.  A separate flyout-top layer has
-  // no filter, so followers stay visible AND above the flyout (2026-11-01).  The
-  // layer mirrors the canvas transform (scroll + scale) so workspace-coordinate
-  // translates keep followers aligned with the main block, which still rides the
-  // real drag surface for connection snapping and flyout/trash delete preview.
+  // Followers are lifted onto a dedicated SURFACE svg that sits ABOVE the
+  // flyout.  They are NOT put on the BlockDragger drag surface: that surface's
+  // dragGroup_ carries a drop-shadow <filter> (feGaussianBlur + feComposite)
+  // over the whole group, and when the selection spans a tall area (e.g. a
+  // block far ABOVE the grabbed one, the "分段框选" case) the filter region
+  // stretches past the browser's per-filter size limit and clips the "upper"
+  // followers out of existence mid-drag.  The surface has no filter, so
+  // followers stay visible AND above the flyout (2026-11-01 / 2026-11-02).
+  // IMPORTANT: the surface must be a SIBLING of the workspace svg, not a layer
+  // inside it — the flyout is not a child of the workspace svg either; it is a
+  // sibling <svg> inserted right after it (inject.js addFlyout_ /
+  // toolbox.js insertSiblingAfter), so any layer inside the workspace svg
+  // paints below the flyout (the bug where followers hid under the flyout).
+  // The inner <g> mirrors the canvas transform (scroll + scale) so
+  // workspace-coordinate translates keep followers aligned with the main
+  // block, which still rides the real drag surface for connection snapping and
+  // flyout/trash delete preview.
   this.boxDragFollowerRoots_ = [];
   this.boxDragFollowerStarts_ = [];
+  var injectionDiv = ws.getParentSvg().parentNode;
+  this.boxDragFollowerSurface_ = Blockly.utils.createSvgElement('svg',
+      {
+        'xmlns': Blockly.SVG_NS,
+        'version': '1.1',
+        'class': 'blocklyBoxDragFollowerSurface'
+      }, injectionDiv);
+  this.boxDragFollowerLayer_ = Blockly.utils.createSvgElement('g', {},
+      this.boxDragFollowerSurface_);
+  this.boxDragFollowerSurface_.style.display = 'block';
   var followerLayerTransform = ws.getCanvas().getAttribute('transform');
-  this.boxDragFollowerLayer_ =
-      Blockly.utils.createSvgElement('g', {}, ws.getParentSvg());
   if (followerLayerTransform) {
     this.boxDragFollowerLayer_.setAttribute('transform', followerLayerTransform);
   }
@@ -1146,6 +1197,23 @@ Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
 };
 
 /**
+ * Remove the box-drag follower surface (and the follower layer inside it) from
+ * the DOM.  Safe to call more than once.
+ * @private
+ */
+Blockly.Gesture.prototype.teardownBoxDragFollowerLayer_ = function() {
+  if (this.boxDragFollowerSurface_ && this.boxDragFollowerSurface_.parentNode) {
+    this.boxDragFollowerSurface_.parentNode.removeChild(
+        this.boxDragFollowerSurface_);
+  }
+  this.boxDragFollowerSurface_ = null;
+  this.boxDragFollowerLayer_ = null;
+  if (this.startWorkspace_) {
+    this.startWorkspace_.boxDragActiveBlocks_ = null;
+  }
+};
+
+/**
  * End a box drag.  When a BlockDragger drove the main block (user-driven box
  * drag), let it finish (apply connections or delete the main stack), after first
  * taking the followers off the drag surface.  Otherwise (legacy rigid
@@ -1189,11 +1257,8 @@ Blockly.Gesture.prototype.endBoxDrag_ = function() {
       event.recordNew();
       Blockly.Events.fire(event);
     }
-    // Tear down the flyout-top follower layer.
-    if (this.boxDragFollowerLayer_ && this.boxDragFollowerLayer_.parentNode) {
-      this.boxDragFollowerLayer_.parentNode.removeChild(this.boxDragFollowerLayer_);
-    }
-    this.boxDragFollowerLayer_ = null;
+    // Tear down the follower surface.
+    this.teardownBoxDragFollowerLayer_();
     this.boxDragFollowerRoots_ = null;
     this.boxDragFollowerStarts_ = null;
 
@@ -1355,12 +1420,13 @@ Blockly.Gesture.prototype.doStart = function(e) {
   // Ctrl (or Cmd on Mac) decides between a box gesture and the normal
   // block/workspace gestures; capture it once, at mouse down.
   this.ctrlHeld_ = !!(e.ctrlKey || e.metaKey);
-  // A plain mousedown on a block starts a fresh single-block interaction, so
-  // any existing box selection is dropped.  Ctrl+drag starting on a selected
-  // block keeps the selection and drags it instead (see updateBoxGesture_).
+  // A plain mousedown on a block starts a fresh single-block interaction, so any
+  // existing box selection is dropped — UNLESS the grabbed block belongs to the
+  // selection (the grab landed on a selected block, or on a child inside a
+  // selected stack).  In that case the whole selection is dragged (no Ctrl); see
+  // isTargetBoxSelected_ / updateBoxGesture_ (2026-11-02).
   if (this.targetBlock_ && !this.ctrlHeld_ && this.startWorkspace_ &&
-      this.startWorkspace_.clearBoxSelection &&
-      !this.startWorkspace_.isBlockBoxSelected(this.targetBlock_)) {
+      this.startWorkspace_.clearBoxSelection && !this.isTargetBoxSelected_()) {
     this.startWorkspace_.clearBoxSelection();
   }
 
@@ -1858,19 +1924,44 @@ Blockly.Gesture.prototype.forceStartBoxDrag = function(fakeEvent, blocks) {
   this.handleBlockStart(fakeEvent, blocks[0]);
   this.handleWsStart(fakeEvent, blocks[0].workspace);
   var ws = blocks[0].workspace;
+  // Force the drag radius to already be exceeded so updateFromEvent_ never calls
+  // updateIsDragging_. Otherwise the first real mouse move past the radius would
+  // run updateIsDragging_ and stack a second drag on top of this one.
+  // forceStartBlockDrag sets the same flag for the same reason (2026-10-17).
+  this.hasExceededDragRadius_ = true;
+  // Make the copies the current box selection, then run the SAME drag the mouse
+  // box-drag uses (startBoxDrag_): the main block rides the BlockDragger drag
+  // surface (above the flyout, connection snapping, flyout/trash delete
+  // preview) and the other roots ride the flyout-top follower surface.  The
+  // old rigid canvas path kept pasted copies BELOW the flyout and gave them no
+  // delete preview, so a pasted selection could neither hover over the flyout
+  // nor be dropped onto it for deletion (2026-11-02).
+  // Select each copied root's FULL stack, not just the root: blockToDom
+  // serialised the whole next-chain into the copy, so the chain is part of the
+  // fragment and must move with it.  startBoxDrag_ only collects each follower
+  // root's input-nested children (collectUnit_ with followNext=false, because
+  // for a mouse box-drag an unselected below-sibling must stay put), so with a
+  // roots-only selection the chain below a follower root landed in neither
+  // mainStack nor followerSet, was disconnected by the unplug loop and stayed
+  // behind on the canvas — "only the main block and the other top-level blocks
+  // follow the cursor" (2026-11-02).  The mouse box-drag is unaffected: its
+  // rubber-band selection already contains every chain block.
+  var fullStacks = [];
+  for (var i = 0; i < blocks.length; i++) {
+    fullStacks.push.apply(fullStacks, blocks[i].getDescendants(false));
+  }
+  ws.setBoxSelection(fullStacks);
+  if (this.startBoxDrag_()) {
+    return;
+  }
+  // Fallback for an immovable / unrenderable main block: the legacy rigid path
+  // (every block translated on the canvas, no snapping or delete preview).
   this.boxDragBlocks_ = blocks.slice();
   this.boxDragOrigins_ = blocks.map(function(b) {
     return b.getRelativeToSurfaceXY();
   });
   this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
   this.isBoxDragging_ = true;
-  // Force the drag radius to already be exceeded so updateFromEvent_ never calls
-  // updateIsDragging_. Otherwise the first real mouse move past the radius would
-  // run updateIsDragging_ -> updateIsDraggingBlock_ and create a BlockDragger for
-  // targetBlock_ (blocks[0]) alone, leaving every other copied block frozen in
-  // place while only that one follows the cursor. forceStartBlockDrag sets the
-  // same flag for the same reason (2026-10-17).
-  this.hasExceededDragRadius_ = true;
   ws.setResizesEnabled(false);
 };
 

@@ -222,6 +222,28 @@ Blockly.Css.CONTENT = [
     'z-index: 50;', /* Display above the toolbox */
   '}',
 
+  /* Scratch-box-select: follower blocks ride a dedicated surface while a box
+     drag is active. It must be a sibling of the workspace / flyout / drag
+     surface svgs: the flyout is NOT a child of the workspace svg but a
+     sibling <svg> inserted after it (inject.js addFlyout_ / toolbox.js
+     insertSiblingAfter), so a layer inside the workspace svg always paints
+     below the flyout. No blur filter (unlike the drag surface), so tall
+     selections are never clipped, and pointer-events:none so it never eats
+     drag events. z-index sits above the flyout (20) and the toolbox (40) but
+     below the block drag surface (50), so the grabbed main block still paints
+     above its followers. */
+  '.blocklyBoxDragFollowerSurface {',
+    'display: none;',
+    'position: absolute;',
+    'top: 0;',
+    'left: 0;',
+    'right: 0;',
+    'bottom: 0;',
+    'overflow: visible !important;',
+    'pointer-events: none;',
+    'z-index: 45;',
+  '}',
+
   '.blocklyTooltipDiv {',
     'background-color: #ffffc7;',
     'border: 1px solid #ddc;',
