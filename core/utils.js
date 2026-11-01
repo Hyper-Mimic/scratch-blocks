@@ -160,6 +160,13 @@ Blockly.utils.isTargetInput = function(e) {
  */
 Blockly.utils.getRelativeXY = function(element) {
   var xy = new goog.math.Coordinate(0, 0);
+  // Guard against non-Element nodes (e.g. document) that lack getAttribute.
+  // Some callers walk a parent chain that can overshoot the workspace <svg>
+  // into the HTML DOM; without this guard getAttribute throws and breaks the
+  // whole drag/delete path (2026-11-01).
+  if (!element || typeof element.getAttribute !== 'function') {
+    return xy;
+  }
   // First, check for x and y attributes.
   var x = element.getAttribute('x');
   if (x) {

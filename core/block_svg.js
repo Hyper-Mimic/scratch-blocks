@@ -551,23 +551,32 @@ Blockly.BlockSvg.prototype.getRelativeToSurfaceXY = function() {
       this.workspace.blockDragSurface_.getGroup() : null;
 
   var element = this.getSvgRoot();
-  if (element) {
-    do {
-      // Loop through this block and every parent.
-      var xy = Blockly.utils.getRelativeXY(element);
-      x += xy.x;
-      y += xy.y;
-      // If this element is the current element on the drag surface, include
-      // the translation of the drag surface itself.
-      if (this.useDragSurface_ &&
-          this.workspace.blockDragSurface_.getCurrentBlock() == element) {
-        var surfaceTranslation = this.workspace.blockDragSurface_.getSurfaceTranslation();
-        x += surfaceTranslation.x;
-        y += surfaceTranslation.y;
-      }
-      element = element.parentNode;
-    } while (element && element != this.workspace.getCanvas() &&
-        element != dragSurfaceGroup);
+  // Walk up through this block and every parent, summing transforms, until we
+  // reach a known stopping point.  The stop is the workspace's <svg> ROOT or any
+  // direct child of it (the block canvas / getCanvas, and the box-select
+  // flyout-top follower layer): all of those carry the workspace transform, so
+  // the coordinates returned are consistent "canvas-local" workspace units for
+  // every block.  Box-select "follower" blocks are lifted onto a flyout-top
+  // layer that is a SIBLING of the canvas under the parent <svg> (not a
+  // descendant of getCanvas), so the walk must stop at that layer instead of
+  // continuing past the <svg> into the HTML DOM (document), where getRelativeXY
+  // would throw on `document.getAttribute` and break the whole drag/delete path
+  // (2026-11-01).  We still also honour the drag-surface stop.
+  while (element && element != this.workspace.getCanvas() &&
+      element != dragSurfaceGroup && element != this.workspace.getParentSvg() &&
+      element.parentNode != this.workspace.getParentSvg()) {
+    var xy = Blockly.utils.getRelativeXY(element);
+    x += xy.x;
+    y += xy.y;
+    // If this element is the current element on the drag surface, include
+    // the translation of the drag surface itself.
+    if (this.useDragSurface_ &&
+        this.workspace.blockDragSurface_.getCurrentBlock() == element) {
+      var surfaceTranslation = this.workspace.blockDragSurface_.getSurfaceTranslation();
+      x += surfaceTranslation.x;
+      y += surfaceTranslation.y;
+    }
+    element = element.parentNode;
   }
   return new goog.math.Coordinate(x, y);
 };
