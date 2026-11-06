@@ -96,6 +96,12 @@ Blockly.BlockSvg = function(workspace, prototypeName, opt_id) {
   this.anchorNode_ = null;
   /** @type {boolean} @private */
   this.needsRenderOnReload_ = false;
+  // PATCH 19 (2026-11-06): whether this block is already in the observer's
+  // pending-render queue. The observer lays out a bounded number of stacks per
+  // frame now, so that queue outlives a frame and needs an O(1) membership test
+  // instead of collecting one duplicate per pass.
+  /** @type {boolean} @package */
+  this.renderPending_ = false;
 
   // Expose this block's ID on its top-level SVG group.
   if (this.svgGroup_.dataset) {

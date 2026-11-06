@@ -15,6 +15,16 @@ Blockly.IntersectionObserver = function(workspace) {
   // Stacks that came back into view and still owe a render. They are rendered
   // together at the end of the pass so the workspace resizes once.
   this.pendingRenders_ = [];
+  // PATCH 19 (2026-11-06): restore is metered now, so a pass keeps two tables:
+  // a stable pool of {block, priority} records that is never reallocated, and a
+  // per-frame view over its first N entries. Nothing survives the pass: a stack
+  // that does not get a slot stays display:none and simply re-enters the
+  // visible branch on the next frame, so no cross-frame staleness can exist.
+  this.restoreSlotPool_ = [];
+  this.restoreCandidates_ = [];
+  this.restoreBacklog_ = 0;
+  // Watchdog for the frames this pass schedules for itself.
+  this.autoContinueStalls_ = 0;
   this.checkForIntersections = this.checkForIntersections.bind(this);
 };
 
@@ -36,6 +46,61 @@ Blockly.IntersectionObserver.UNLOAD_SCREENS = 2;
 Blockly.IntersectionObserver.MAX_UNLOAD_PER_FRAME = 30;
 
 /**
+ * PATCH 19 (2026-11-06): upper bound on how many stacks one frame may bring
+ * back into the document. Restoring a stack is a handful of DOM writes, but
+ * each one invalidates the layout of the whole block canvas, so the count is
+ * the real limiter; the time budget below only catches a slow outlier.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.MAX_RESTORE_PER_FRAME = 40;
+
+/**
+ * PATCH 19 (2026-11-06): ceiling for the adaptive restore cap. A zoom out can
+ * put thousands of stacks inside the viewport at once; the cap grows with the
+ * backlog (see RESTORE_DRAIN_FRAMES) but never past this, which bounds the
+ * layout a single frame can schedule.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.MAX_RESTORE_BURST = 120;
+
+/**
+ * PATCH 19 (2026-11-06): the adaptive restore cap aims to clear the backlog in
+ * this many frames.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.RESTORE_DRAIN_FRAMES = 8;
+
+/**
+ * PATCH 19 (2026-11-06): wall clock budget for the restore phase of one pass,
+ * in milliseconds.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.RESTORE_BUDGET_MS = 4;
+
+/**
+ * PATCH 19 (2026-11-06): upper bound on how many stacks one frame may re-lay
+ * out. render() measures text with getComputedTextLength(), which is a forced
+ * synchronous layout each time.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.MAX_RENDER_PER_FRAME = 8;
+
+/**
+ * PATCH 19 (2026-11-06): wall clock budget for the render phase, in
+ * milliseconds.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.RENDER_BUDGET_MS = 4;
+
+/**
+ * PATCH 19 (2026-11-06): read the clock once every this many items instead of
+ * once per item, so the sampling never shows up in the profile. The first item
+ * of a loop always runs, which is what proves the backlog shrinks every frame.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.CLOCK_STRIDE = 8;
+
+/**
  * Counters for profiling, mirrored onto window.__cullingStats. Kept in one
  * reused object so a per-frame update does not allocate.
  */
@@ -44,7 +109,24 @@ Blockly.IntersectionObserver.stats = {
   lastMs: 0,
   culled: 0,
   unloaded: 0,
-  restored: 0
+  restored: 0,
+  // PATCH 19 (2026-11-06): metered restore work, so a trace can tell a slow
+  // pass from a backed-up one.
+  rendered: 0,
+  restoreBacklog: 0,
+  renderBacklog: 0
+};
+
+/**
+ * PATCH 19 (2026-11-06): closest to the viewport centre first. Hoisted so the
+ * per-frame sort does not allocate a comparator.
+ * @param {{priority: number}} a First candidate.
+ * @param {{priority: number}} b Second candidate.
+ * @return {number} Sort order.
+ * @private
+ */
+Blockly.IntersectionObserver.priorityCompare_ = function(a, b) {
+  return a.priority - b.priority;
 };
 
 Blockly.IntersectionObserver.prototype.observe = function(block) {
@@ -82,6 +164,11 @@ Blockly.IntersectionObserver.prototype.dispose = function() {
   this.observing = [];
   this.observingSet_ = null;
   this.pendingRenders_ = [];
+  // PATCH 19 (2026-11-06): drop the metering tables; they hold block references.
+  this.restoreSlotPool_ = [];
+  this.restoreCandidates_ = [];
+  this.restoreBacklog_ = 0;
+  this.autoContinueStalls_ = 0;
   this.workspace = null;
 };
 
@@ -150,6 +237,127 @@ Blockly.IntersectionObserver.prototype.canUnloadStacks_ = function() {
   return true;
 };
 
+/**
+ * PATCH 19 (2026-11-06): bring back at most one frame's worth of the stacks the
+ * pass collected, closest to the viewport centre first. A candidate that gets
+ * no slot keeps intersects_ false and display:none, and the next pass
+ * recomputes it from scratch -- which is why this needs neither a queue nor any
+ * cross-frame guard.
+ * @param {number} count Number of live entries in restoreCandidates_.
+ * @param {boolean} hasPerformance Whether performance.now is available.
+ * @return {number} How many stacks were restored.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.restoreVisibleBlocks_ = function(
+    count, hasPerformance) {
+  var candidates = this.restoreCandidates_;
+  var cap = Math.ceil(count /
+      Blockly.IntersectionObserver.RESTORE_DRAIN_FRAMES);
+  if (cap < Blockly.IntersectionObserver.MAX_RESTORE_PER_FRAME) {
+    cap = Blockly.IntersectionObserver.MAX_RESTORE_PER_FRAME;
+  } else if (cap > Blockly.IntersectionObserver.MAX_RESTORE_BURST) {
+    cap = Blockly.IntersectionObserver.MAX_RESTORE_BURST;
+  }
+  if (count > 1) {
+    candidates.sort(Blockly.IntersectionObserver.priorityCompare_);
+  }
+  var limit = cap < count ? cap : count;
+  var deadline = (hasPerformance ? performance.now() : Date.now()) +
+      Blockly.IntersectionObserver.RESTORE_BUDGET_MS;
+  // The clock is sampled every CLOCK_STRIDE items, never on the first one, so
+  // every pass with a backlog restores at least one stack and the backlog is
+  // guaranteed to shrink.
+  var mask = Blockly.IntersectionObserver.CLOCK_STRIDE - 1;
+  var restored = 0;
+  var c = 0;
+  for (; c < limit; c++) {
+    var slot = candidates[c];
+    var block = slot.block;
+    // Never pin a block reference between frames.
+    slot.block = null;
+    if (!block) {
+      // Defensive: the view was truncated under us. Stop rather than throw.
+      break;
+    }
+    block.setIntersects(true);
+    restored++;
+    if ((c & mask) === mask &&
+        (hasPerformance ? performance.now() : Date.now()) >= deadline) {
+      c++;
+      break;
+    }
+  }
+  for (; c < count; c++) {
+    candidates[c].block = null;
+  }
+  this.restoreBacklog_ = count - restored;
+  return restored;
+};
+
+/**
+ * PATCH 19 (2026-11-06): lay out the stacks a previous pass brought back from
+ * display:none. Metered across frames with an in-place compaction, so the
+ * workspace resizes the scrollbars once per frame instead of once per stack.
+ * @param {boolean=} opt_unbounded Ignore the budget. Used only by the branch
+ *     that restores the whole workspace at once (culling switched off).
+ * @return {number} How many stacks were rendered.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.flushPendingRenders_ = function(
+    opt_unbounded) {
+  var pending = this.pendingRenders_;
+  var workspace = this.workspace;
+  if (!pending.length) {
+    return 0;
+  }
+  if (!workspace) {
+    pending.length = 0;
+    return 0;
+  }
+  var hasPerformance = typeof performance !== 'undefined' && !!performance.now;
+  var now = hasPerformance ? performance.now : Date.now;
+  var limit = opt_unbounded ?
+      Infinity : Blockly.IntersectionObserver.MAX_RENDER_PER_FRAME;
+  var deadline = opt_unbounded ?
+      Infinity : now() + Blockly.IntersectionObserver.RENDER_BUDGET_MS;
+  var mask = Blockly.IntersectionObserver.CLOCK_STRIDE - 1;
+  var rendered = 0;
+  // Write pointer for the in-place compaction. w <= r at all times, so a
+  // deferred entry is never copied over an entry that is still unread.
+  var w = 0;
+  workspace.beginContentUpdate_();
+  try {
+    for (var r = 0; r < pending.length; r++) {
+      var block = pending[r];
+      // Dropped rather than deferred: a disposed block throws on measure, and a
+      // block that is unloaded or display:none reports zero text, which would
+      // write a zero width into the content rect table and shrink the
+      // scrollbars for good. needsRenderOnReload_ stays set, so the next
+      // restore queues it again.
+      if (!block.workspace || !block.needsRenderOnReload_ ||
+          block.unloaded_ || !block.intersects_) {
+        block.renderPending_ = false;
+        continue;
+      }
+      if (rendered >= limit ||
+          (rendered > 0 && (r & mask) === mask && now() >= deadline)) {
+        pending[w++] = block;
+        continue;
+      }
+      // Clear before rendering, as the unbudgeted version did: a render that
+      // throws must not leave the queue spinning on the same block.
+      block.needsRenderOnReload_ = false;
+      block.renderPending_ = false;
+      block.render();
+      rendered++;
+    }
+  } finally {
+    workspace.endContentUpdate_();
+    pending.length = w;
+  }
+  return rendered;
+};
+
 Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   this.intersectionCheckQueued = false;
 
@@ -169,6 +377,14 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     for (var i = 0; i < this.observing.length; i++) {
       this.observing[i].setIntersects(true);
     }
+    // PATCH 19 (2026-11-06): this branch shows everything at once, so the
+    // metering is meaningless here. Lay out whatever still owed a render in one
+    // go -- a toggle is a one-off, not a per-frame path -- and drop the restore
+    // bookkeeping. Without this the queued stacks would wait for a pass that
+    // never comes back to the metered branch.
+    this.restoreBacklog_ = 0;
+    this.autoContinueStalls_ = 0;
+    this.flushPendingRenders_(true);
     return;
   }
 
@@ -187,6 +403,16 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
 
   // Allow blocks to go slightly offscreen so that effects such as glow do not get cut off.
   var margin = 12 * workspaceScale;
+
+  // PATCH 19 (2026-11-06): a deferred restore is ordered by distance to the
+  // centre of the viewport, so the stacks the user is looking at come back
+  // first. Precomputed once: the per-block term is then two multiplies and a
+  // compare. A zero-sized viewport falls back to all-zero priorities, which
+  // leaves the candidate order untouched instead of producing NaN.
+  var centreX = workspaceWidth * 0.5;
+  var centreY = workspaceHeight * 0.5;
+  var invHalfWidth = workspaceWidth > 0 ? 2 / workspaceWidth : 0;
+  var invHalfHeight = workspaceHeight > 0 ? 2 / workspaceHeight : 0;
 
   // PATCH 8 GUARD (2026-09-26): never cull the block that is currently being
   // dragged. The dragged block lives on the block drag surface while a drag is
@@ -229,6 +455,12 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   var culledCount = 0;
   var unloadedCount = 0;
   var restoredCount = 0;
+  // PATCH 19 (2026-11-06): a visible stack that was hidden last frame is only
+  // collected here; the DOM write happens in restoreVisibleBlocks_ under a
+  // budget. slotPool_ is never reallocated, so a pass allocates nothing.
+  var restoreCount = 0;
+  var slotPool = this.restoreSlotPool_;
+  var slotView = this.restoreCandidates_;
 
   for (var i = 0; i < this.observing.length; i++) {
     var block = this.observing[i];
@@ -295,48 +527,83 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     }
 
     var wasIntersecting = block.intersects_;
-    block.setIntersects(visible);
 
-    if (visible) {
-      if (!wasIntersecting) {
-        restoredCount++;
+    if (!visible) {
+      // Hiding is cheap (it drops the subtree from the paint tree) and never
+      // needs a budget, so it stays inline.
+      block.setIntersects(false);
+      if (wasIntersecting) {
+        culledCount++;
       }
-      // A restored block may owe a render: its fields could have been edited
-      // while it was out of the document (see BlockSvg.render).
-      if (block.needsRenderOnReload_) {
-        this.pendingRenders_.push(block);
+
+      // Offscreen. Only stacks that sit directly on the canvas can leave it: the
+      // drag surface, a parent block and a flyout all need the node in place.
+      if (!canUnload || block.unloaded_ || block === selectedRoot) {
+        continue;
+      }
+      var root = block.getSvgRoot();
+      if (!root || root.parentNode !== canvas) {
+        continue;
+      }
+
+      // Distance from the viewport in screens, normalised per axis and then
+      // maximised. Dividing by the axis that was exceeded keeps a wide, short
+      // viewport from refusing to unload anything above or below it.
+      var left = canvasPos.x + blockPosX;
+      var top = canvasPos.y + blockPosY;
+      var gapX = Math.max(0, left - workspaceWidth, -left - blockWidth);
+      var gapY = Math.max(0, top - workspaceHeight, -top - blockHeight);
+      var distance = Math.max(gapX / workspaceWidth, gapY / workspaceHeight);
+      if (distance > unloadDistance) {
+        if (!candidates) {
+          candidates = [];
+        }
+        candidates.push({block: block, distance: distance});
       }
       continue;
     }
 
-    if (wasIntersecting) {
-      culledCount++;
-    }
-
-    // Offscreen. Only stacks that sit directly on the canvas can leave it: the
-    // drag surface, a parent block and a flyout all need the node in place.
-    if (!canUnload || block.unloaded_ || block === selectedRoot) {
-      continue;
-    }
-    var root = block.getSvgRoot();
-    if (!root || root.parentNode !== canvas) {
-      continue;
-    }
-
-    // Distance from the viewport in screens, normalised per axis and then
-    // maximised. Dividing by the axis that was exceeded keeps a wide, short
-    // viewport from refusing to unload anything above or below it.
-    var left = canvasPos.x + blockPosX;
-    var top = canvasPos.y + blockPosY;
-    var gapX = Math.max(0, left - workspaceWidth, -left - blockWidth);
-    var gapY = Math.max(0, top - workspaceHeight, -top - blockHeight);
-    var distance = Math.max(gapX / workspaceWidth, gapY / workspaceHeight);
-    if (distance > unloadDistance) {
-      if (!candidates) {
-        candidates = [];
+    // Visible. A stack that was hidden last frame is collected instead of being
+    // written to the DOM here: a zoom out crosses the visibility threshold for
+    // hundreds of stacks in the same frame, and doing them all at once is a
+    // long task that freezes the editor. Anything this pass cannot afford keeps
+    // intersects_ false and display:none, so the next pass picks it up again --
+    // the pass itself is the retry queue.
+    if (!wasIntersecting) {
+      var slot = slotPool[restoreCount];
+      if (!slot) {
+        slot = {block: null, priority: 0};
+        slotPool[restoreCount] = slot;
       }
-      candidates.push({block: block, distance: distance});
+      var slotX = canvasPos.x + blockPosX + blockWidth * 0.5 - centreX;
+      var slotY = canvasPos.y + blockPosY + blockHeight * 0.5 - centreY;
+      slot.block = block;
+      slot.priority = Math.max(
+          Math.abs(slotX) * invHalfWidth,
+          Math.abs(slotY) * invHalfHeight);
+      slotView[restoreCount] = slot;
+      restoreCount++;
+      continue;
     }
+
+    // Already on screen. It can still owe a render: the forced restore paths
+    // attach without consuming it (see BlockSvg.attachToCanvas_). renderPending_
+    // keeps the queue from collecting one duplicate per frame while it waits.
+    if (block.needsRenderOnReload_ && !block.renderPending_) {
+      block.renderPending_ = true;
+      this.pendingRenders_.push(block);
+    }
+  }
+
+  // Truncation only drops references; the slot records stay in the pool.
+  slotView.length = restoreCount;
+
+  // PATCH 19 (2026-11-06): spend the restore budget before the unload sort, so
+  // the stacks the user is actually looking at fill in first.
+  if (restoreCount) {
+    restoredCount = this.restoreVisibleBlocks_(restoreCount, hasPerformance);
+  } else {
+    this.restoreBacklog_ = 0;
   }
 
   // Unload the furthest stacks first, within the per-frame budget, so the next
@@ -358,24 +625,12 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   }
 
   // Blocks that came back owe a render, because their fields may have changed
-  // while they were out of the document. Batch it: render() resizes the content,
-  // and one resize per restored stack rebuilds the scrollbars that many times.
+  // while they were out of the document. PATCH 19 (2026-11-06): metered, and
+  // the leftovers stay queued -- one render is a forced text measurement, which
+  // is the other half of the long task a zoom out used to produce.
+  var renderedCount = 0;
   if (this.pendingRenders_.length) {
-    var pending = this.pendingRenders_;
-    workspace.beginContentUpdate_();
-    try {
-      for (var p = 0; p < pending.length; p++) {
-        var restoredBlock = pending[p];
-        if (!restoredBlock.workspace || !restoredBlock.needsRenderOnReload_) {
-          continue;
-        }
-        restoredBlock.needsRenderOnReload_ = false;
-        restoredBlock.render();
-      }
-    } finally {
-      workspace.endContentUpdate_();
-    }
-    pending.length = 0;
+    renderedCount = this.flushPendingRenders_(false);
   }
 
   var stats = Blockly.IntersectionObserver.stats;
@@ -383,8 +638,36 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   stats.culled = culledCount;
   stats.unloaded = unloadedCount;
   stats.restored = restoredCount;
+  stats.rendered = renderedCount;
+  stats.restoreBacklog = this.restoreBacklog_;
+  stats.renderBacklog = this.pendingRenders_.length;
   stats.lastMs = (hasPerformance ? performance.now() : Date.now()) - startTime;
   if (typeof window !== 'undefined') {
     window.__cullingStats = stats;
+  }
+
+  // PATCH 19 (2026-11-06): a zoom that stops mid-restore leaves no input event
+  // behind to schedule the next sweep, and intersectionCheckQueued was already
+  // cleared at the top of this pass, so calling this chains the next animation
+  // frame. Every metered pass restores at least one stack, so the chain
+  // strictly shrinks the backlog; the stall counter is the stop for anything
+  // that breaks that assumption. The extra frame after the last render lets the
+  // workspace re-measure what it just laid out (render only invalidates the
+  // content bounds, it does not schedule a pass).
+  //
+  // The requestAnimationFrame guard is not cosmetic: the fallback branch of
+  // queueIntersectionCheck is a microtask, which drains inside this very frame
+  // and never paints, turning the chain into an infinite loop.
+  if (restoredCount > 0 || renderedCount > 0) {
+    this.autoContinueStalls_ = 0;
+  } else if (this.restoreBacklog_ > 0 || this.pendingRenders_.length > 0) {
+    this.autoContinueStalls_++;
+  }
+  var stillPending = this.restoreBacklog_ > 0 ||
+      this.pendingRenders_.length > 0 || renderedCount > 0;
+  var workspaceVisible = !workspace.isVisible || workspace.isVisible();
+  if (stillPending && workspaceVisible && window.requestAnimationFrame &&
+      this.autoContinueStalls_ < 2) {
+    this.queueIntersectionCheck();
   }
 };
