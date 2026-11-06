@@ -335,19 +335,22 @@ Blockly.scratchBlocksUtils.pruneUnselected_ = function(xml, selectionIds) {
 
 /**
  * Count the box-selected blocks the way the "Delete X Blocks" / "Duplicate X
- * Blocks" labels should: a value-input reporter (an operator plugged into a
- * socket) is an argument, not a standalone block, so it is not counted
- * (2026-10-18).  A block with an output connection is exactly such a reporter;
- * hat / stack / C / statement blocks have none, so they are the "积木" that
- * matter.
+ * Blocks" labels should: every selected block counts, INCLUDING a reporter
+ * plugged into a socket (an operator inside a `move` block is still a block the
+ * user selected and will copy/delete), but EXCLUDING shadow fillers (a numeric
+ * input's own `10` is the container's filler, not a separate block).  This
+ * matches the single-block right-click delete label, which counts
+ * `getDescendants(false, true)` — reporters in, shadows out — so the same stack
+ * reads the same number whether it was box-selected or right-clicked on its own
+ * (2026-11-07).
  * @param {!Array<!Blockly.BlockSvg>} blocks The box-selected blocks.
- * @return {number} The number of blocks without an output connection.
+ * @return {number} The number of non-shadow selected blocks.
  * @package
  */
 Blockly.scratchBlocksUtils.countSelectionBlocks = function(blocks) {
   var count = 0;
   for (var i = 0, block; block = blocks[i]; i++) {
-    if (!block.outputConnection) {
+    if (!block.isShadow()) {
       count++;
     }
   }
