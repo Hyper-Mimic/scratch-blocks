@@ -42,6 +42,9 @@ Blockly.BlockAnimations.disposeUiEffect = function(disposable) {
     var xy = workspace.getSvgXY(svgGroup);
     // Deeply clone the current block.
     var clone = svgGroup.cloneNode(true);
+    // The clone is purely visual; a frame's <foreignObject>/<input> must not
+    // swallow clicks during the 150ms shrink animation.
+    clone.style.pointerEvents = 'none';
     clone.translateX_ = xy.x;
     clone.translateY_ = xy.y;
     clone.setAttribute('transform', 'translate(' + xy.x + ',' + xy.y + ')');
@@ -52,8 +55,12 @@ Blockly.BlockAnimations.disposeUiEffect = function(disposable) {
         workspace.scale);
   } catch (e) {
     // Never let the disposal animation abort the actual deletion of the
-    // block/comment (a <foreignObject> like a comment's textarea can make
-    // getBBox() throw in some browsers).  The sound + removal still happen.
+    // block/comment/frame (a <foreignObject> like a comment's textarea or a
+    // frame's title input can make getBBox() throw in some browsers). The
+    // sound + removal still happen; discard a clone that never got animated.
+    if (clone) {
+      goog.dom.removeNode(clone);
+    }
   }
 };
 

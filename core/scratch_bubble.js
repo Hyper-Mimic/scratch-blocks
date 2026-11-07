@@ -691,6 +691,7 @@ Blockly.ScratchBubble.prototype.updatePosition_ = function(x, y) {
  * @package
  */
 Blockly.ScratchBubble.prototype.dispose = function() {
+  Blockly.ContextMenu.hideIfOwner(this);
   Blockly.ScratchBubble.superClass_.dispose.call(this);
   this.topBarLabel_ = null;
   this.commentTopBar_ = null;

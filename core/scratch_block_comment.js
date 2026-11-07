@@ -590,7 +590,7 @@ Blockly.ScratchBlockComment.prototype.isMinimized = function() {
 Blockly.ScratchBlockComment.prototype.showContextMenu_ = function(e) {
   var menuOptions = [];
   menuOptions.push(Blockly.ContextMenu.commentDeleteOption(this, Blockly.Msg.DELETE));
-  Blockly.ContextMenu.show(e, menuOptions, this.block_.RTL);
+  Blockly.ContextMenu.show(e, menuOptions, this.block_.RTL, this);
 };
 
 /**
@@ -636,6 +636,7 @@ Blockly.ScratchBlockComment.fireCreateEvent = function(comment) {
  * Dispose of this comment.
  */
 Blockly.ScratchBlockComment.prototype.dispose = function() {
+  Blockly.ContextMenu.hideIfOwner(this);
   if (Blockly.Events.isEnabled()) {
     // Emit delete event before disposal begins so that the
     // event's reference to this comment contains all the relevant

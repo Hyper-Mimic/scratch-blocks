@@ -31,6 +31,7 @@
 goog.provide('Blockly.Xml');
 
 goog.require('Blockly.Events.BlockCreate');
+goog.require('Blockly.Frame');
 goog.require('Blockly.Events.VarCreate');
 
 goog.require('goog.asserts');
@@ -46,6 +47,10 @@ goog.require('goog.dom');
 Blockly.Xml.workspaceToDom = function(workspace, opt_noId) {
   var xml = goog.dom.createDom('xml');
   xml.appendChild(Blockly.Xml.variablesToDom(workspace.getAllVariables()));
+  var frames = workspace.getTopFrames ? workspace.getTopFrames() : [];
+  for (var i = 0, frame; frame = frames[i]; i++) {
+    xml.appendChild(frame.toXmlWithXY());
+  }
   var comments = workspace.getTopComments(true).filter(function(topComment) {
     return topComment instanceof Blockly.WorkspaceComment;
   });
@@ -493,6 +498,11 @@ Blockly.Xml.domToWorkspace = function(xml, workspace) {
         } else {
           Blockly.WorkspaceComment.fromXml(xmlChild, workspace);
         }
+      } else if (name == 'frame') {
+        // Frames are drawn, so a headless workspace just skips them.
+        if (workspace.rendered) {
+          Blockly.Frame.fromXml(xmlChild, workspace);
+        }
       } else if (name == 'variables') {
         if (variablesFirst) {
           Blockly.Xml.domToVariables(xmlChild, workspace);
@@ -513,6 +523,14 @@ Blockly.Xml.domToWorkspace = function(xml, workspace) {
   // Re-enable workspace resizing.
   if (workspace.setResizesEnabled) {
     workspace.setResizesEnabled(true);
+  }
+  // A project can load with events disabled, so collapsed frames cannot rely
+  // on their CREATE listener to hide scripts that arrive after them.
+  if (workspace.rendered && workspace.topFrames_ && workspace.topFrames_.length) {
+    var loadedTopBlocks = workspace.getTopBlocks(false);
+    for (var b = 0; b < loadedTopBlocks.length; b++) {
+      Blockly.Xml.restoreFrameVisibility_(workspace, loadedTopBlocks[b]);
+    }
   }
   return newBlockIds;
 };
@@ -911,6 +929,29 @@ Blockly.Xml.deleteNext = function(xmlBlock) {
     if (child.nodeName.toLowerCase() == 'next') {
       xmlBlock.removeChild(child);
       break;
+    }
+  }
+};
+
+/**
+ * Deferred imports suppress create events, so restore collapsed frame members
+ * explicitly when their scripts finish rendering.
+ * @param {!Blockly.WorkspaceSvg} workspace Owning workspace.
+ * @param {!Blockly.BlockSvg} block Top-level block.
+ * @private
+ */
+Blockly.Xml.restoreFrameVisibility_ = function(workspace, block) {
+  var frames = workspace && workspace.topFrames_;
+  if (!frames || !frames.length) {
+    return;
+  }
+  for (var i = 0; i < frames.length; i++) {
+    if (frames[i].isCollapsed() && frames[i].getBlockIds().indexOf(block.id) !== -1) {
+      var root = block.getSvgRoot();
+      if (root) {
+        root.style.display = 'none';
+      }
+      return;
     }
   }
 };

@@ -102,6 +102,7 @@ Blockly.WorkspaceCommentSvg.DEFAULT_SIZE = 200;
  * @package
  */
 Blockly.WorkspaceCommentSvg.prototype.dispose = function() {
+  Blockly.ContextMenu.hideIfOwner(this);
   if (!this.workspace) {
     // The comment has already been deleted.
     return;
@@ -188,7 +189,7 @@ Blockly.WorkspaceCommentSvg.prototype.showContextMenu_ = function(e) {
     menuOptions.push(Blockly.ContextMenu.commentDeleteOption(comment));
   }
 
-  Blockly.ContextMenu.show(e, menuOptions, this.RTL);
+  Blockly.ContextMenu.show(e, menuOptions, this.RTL, this);
 };
 
 /**
