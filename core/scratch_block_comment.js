@@ -637,6 +637,7 @@ Blockly.ScratchBlockComment.fireCreateEvent = function(comment) {
  */
 Blockly.ScratchBlockComment.prototype.dispose = function() {
   Blockly.ContextMenu.hideIfOwner(this);
+  var workspace = this.workspace;
   if (Blockly.Events.isEnabled()) {
     // Emit delete event before disposal begins so that the
     // event's reference to this comment contains all the relevant
@@ -649,6 +650,14 @@ Blockly.ScratchBlockComment.prototype.dispose = function() {
   // PATCH 9 (2026-10-10): the comment left topComments_ -> cached box is stale.
   // PATCH 13 (2026-10-10): name it; the table reconcile drops it from there.
   this.workspace.invalidateContentBounds_(this);
+  // Like BlockSvg.dispose(), a deleted comment must resize the workspace: an
+  // edge comment otherwise leaves the scrollable area permanently too large.
+  // Use a full invalidate (rather than naming this comment) because a disposed
+  // icon has no live block_/bubble_ to measure if it stays in the dirty set.
+  // clear() disposes every comment in a loop; skip the per-comment resize.
+  if (workspace && workspace.resizeContents && !workspace.isClearing) {
+    workspace.resizeContents();
+  }
 };
 
 /**

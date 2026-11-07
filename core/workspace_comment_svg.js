@@ -107,6 +107,9 @@ Blockly.WorkspaceCommentSvg.prototype.dispose = function() {
     // The comment has already been deleted.
     return;
   }
+  // superClass_.dispose() nulls this.workspace; keep the reference so the
+  // scrollable area can be recomputed after the comment leaves topComments_.
+  var workspace = this.workspace;
   // If this comment is being deleted, unlink the mouse events.
   if (Blockly.selected == this) {
     this.unselect();
@@ -138,6 +141,16 @@ Blockly.WorkspaceCommentSvg.prototype.dispose = function() {
   Blockly.Events.disable();
   Blockly.WorkspaceCommentSvg.superClass_.dispose.call(this);
   Blockly.Events.enable();
+
+  // A comment that defined the right/bottom edge is gone now. Blocks call
+  // resizeContents() from BlockSvg.dispose(); comments only invalidated the
+  // cached box, so the scrollbars kept the old workspace width/height.
+  // clear() disposes every comment in a loop; skip the per-comment resize
+  // there (the caller resizes once at the end) and avoid touching a DOM that
+  // may already be going away.
+  if (!workspace.isClearing) {
+    workspace.resizeContents();
+  }
 };
 
 /**
