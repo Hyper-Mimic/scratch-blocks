@@ -321,6 +321,9 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
       this.attachToCanvas_(true);
     }
     root.style.display = '';
+    // A collapsed frame hides its scripts by setting display:none on them;
+    // culling must not make them visible again.
+    Blockly.Xml.restoreFrameVisibility_(this.workspace, this);
   } else {
     root.style.display = 'none';
   }
@@ -944,6 +947,9 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
     var selection = Array.from(ws.getBoxSelection());
     menuOptions.push(Blockly.ContextMenu.selectionDuplicateOption(selection, e));
     menuOptions.push(Blockly.ContextMenu.selectionDeleteOption(selection));
+    if (ws.options.frames !== false) {
+      menuOptions.push(Blockly.ContextMenu.selectionFrameOption(selection));
+    }
     // Allow the host application to append its own options to the
     // box-selection menu (the GUI adds "Add Selection to Backpack").
     if (Blockly.boxSelectionExtraOptions) {

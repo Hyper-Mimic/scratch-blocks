@@ -31,6 +31,8 @@
 goog.provide('Blockly.ContextMenu');
 
 goog.require('Blockly.Events.BlockCreate');
+goog.require('Blockly.Events.FrameCreate');
+goog.require('Blockly.Frame');
 goog.require('Blockly.scratchBlocksUtils');
 goog.require('Blockly.utils');
 goog.require('Blockly.utils.uiMenu');
@@ -50,6 +52,12 @@ goog.require('goog.userAgent');
 Blockly.ContextMenu.currentBlock = null;
 
 /**
+ * The comment or frame whose context menu is currently open, or null.
+ * @type {?Object}
+ */
+Blockly.ContextMenu.currentOwner = null;
+
+/**
  * Opaque data that can be passed to unbindEvent_.
  * @type {Array.<!Array>}
  * @private
@@ -61,8 +69,10 @@ Blockly.ContextMenu.eventWrapper_ = null;
  * @param {!Event} e Mouse event.
  * @param {!Array.<!Object>} options Array of menu options.
  * @param {boolean} rtl True if RTL, false if LTR.
+ * @param {Object=} opt_owner Comment or frame that owns this menu.
  */
-Blockly.ContextMenu.show = function(e, options, rtl) {
+Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
+  Blockly.ContextMenu.currentOwner = null;
   Blockly.WidgetDiv.show(Blockly.ContextMenu, rtl, null);
   if (!options.length) {
     Blockly.ContextMenu.hide();
@@ -78,6 +88,7 @@ Blockly.ContextMenu.show = function(e, options, rtl) {
   // mouse event is still waiting in the queue and clears focus.
   setTimeout(function() {menu.getElement().focus();}, 1);
   Blockly.ContextMenu.currentBlock = null;  // May be set by Blockly.Block.
+  Blockly.ContextMenu.currentOwner = opt_owner || null;
 };
 
 /**
@@ -184,8 +195,20 @@ Blockly.ContextMenu.createWidget_ = function(menu) {
 Blockly.ContextMenu.hide = function() {
   Blockly.WidgetDiv.hideIfOwner(Blockly.ContextMenu);
   Blockly.ContextMenu.currentBlock = null;
+  Blockly.ContextMenu.currentOwner = null;
   if (Blockly.ContextMenu.eventWrapper_) {
     Blockly.unbindEvent_(Blockly.ContextMenu.eventWrapper_);
+  }
+};
+
+/**
+ * Close the menu when the comment or frame it belongs to is disposed.
+ * @param {!Object} owner The object being disposed.
+ * @package
+ */
+Blockly.ContextMenu.hideIfOwner = function(owner) {
+  if (Blockly.ContextMenu.currentOwner === owner) {
+    Blockly.ContextMenu.hide();
   }
 };
 
@@ -623,6 +646,103 @@ Blockly.ContextMenu.workspaceCommentOption = function(ws, e) {
     addWsComment();
   };
   return wsCommentOption;
+};
+
+/**
+ * Make a context menu option for adding a frame on the workspace.
+ * @param {!Blockly.WorkspaceSvg} ws The workspace where the right-click
+ *     originated.
+ * @param {!Event} e The right-click mouse event.
+ * @return {!Object} A menu option, containing text, enabled, and a callback.
+ * @package
+ */
+Blockly.ContextMenu.workspaceFrameOption = function(ws, e) {
+  var addWsFrame = function() {
+    // Position the frame where the user right-clicked. The maths is the same as
+    // for a new comment: client coordinates, offset by the injection div, then
+    // by the workspace origin, then unscaled.
+    var injectionDiv = ws.getInjectionDiv();
+    var boundingRect = injectionDiv.getBoundingClientRect();
+    var clientOffsetPixels = new goog.math.Coordinate(
+        e.clientX - boundingRect.left, e.clientY - boundingRect.top);
+    var mainOffsetPixels = ws.getOriginOffsetInPixels();
+    var finalOffsetPixels = goog.math.Coordinate.difference(clientOffsetPixels,
+        mainOffsetPixels);
+    var finalOffsetMainWs = finalOffsetPixels.scale(1 / ws.scale);
+
+    var frame = new Blockly.Frame(ws, {
+      x: finalOffsetMainWs.x,
+      y: finalOffsetMainWs.y
+    });
+    Blockly.Events.fire(new Blockly.Events.FrameCreate(frame));
+  };
+
+  var wsFrameOption = {enabled: true};
+  wsFrameOption.text = Blockly.Msg.ADD_FRAME;
+  wsFrameOption.callback = function() {
+    addWsFrame();
+  };
+  return wsFrameOption;
+};
+
+/**
+ * Make a context menu option that wraps a box selection in a new frame.
+ * @param {!Array.<!Blockly.BlockSvg>} selection The selected blocks.
+ * @return {!Object} A menu option, containing text, enabled, and a callback.
+ * @package
+ */
+Blockly.ContextMenu.selectionFrameOption = function(selection) {
+  var frameOption = {enabled: true};
+  frameOption.text = Blockly.Msg.CREATE_FRAME_FROM_SELECTION;
+  frameOption.callback = function() {
+    Blockly.ContextMenu.createFrameFromSelection_(selection);
+  };
+  return frameOption;
+};
+
+/**
+ * Create a frame whose rectangle covers the selected stacks. Frames own blocks
+ * by position, so no block registration is needed.
+ * @param {!Array.<!Blockly.BlockSvg>} selection The selected blocks.
+ * @private
+ */
+Blockly.ContextMenu.createFrameFromSelection_ = function(selection) {
+  // Union every selected block, not just the stack roots: a stack's next chain
+  // and nested statements must all sit inside the new frame.
+  var ws = null;
+  var minX = Infinity;
+  var minY = Infinity;
+  var maxX = -Infinity;
+  var maxY = -Infinity;
+  for (var i = 0; i < selection.length; i++) {
+    var block = selection[i];
+    if (!block.workspace || !block.getSvgRoot()) {
+      continue;
+    }
+    ws = ws || block.workspace;
+    var box = block.getBoundingRectangle();
+    if (!isFinite(box.topLeft.x) || !isFinite(box.bottomRight.y)) {
+      continue;
+    }
+    minX = Math.min(minX, box.topLeft.x);
+    minY = Math.min(minY, box.topLeft.y);
+    maxX = Math.max(maxX, box.bottomRight.x);
+    maxY = Math.max(maxY, box.bottomRight.y);
+  }
+  if (!ws || !isFinite(minX) || !isFinite(maxX)) {
+    return;
+  }
+  var pad = Blockly.Frame.PADDING;
+  var header = Blockly.Frame.TOP_BAR_HEIGHT;
+  // Reserve the title bar above the scripts, so the first row of blocks never
+  // sits under the header.
+  var frame = new Blockly.Frame(ws, {
+    x: minX - pad,
+    y: minY - pad - header,
+    width: (maxX - minX) + (2 * pad),
+    height: (maxY - minY) + (2 * pad) + header
+  });
+  Blockly.Events.fire(new Blockly.Events.FrameCreate(frame));
 };
 
 // End helper functions for creating context menu options.

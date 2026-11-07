@@ -99,6 +99,13 @@ Blockly.Options = function(options) {
   if (hasScrollbars === undefined) {
     hasScrollbars = hasCategories;
   }
+  // Frames: the workspace context menu's "Add Frame" entry. On by default;
+  // pass frames:false to hide it. Forced off in readOnly mode.
+  var hasFrames = options['frames'];
+  if (hasFrames === undefined) {
+    hasFrames = true;
+  }
+  hasFrames = !!hasFrames && !readOnly;
   // Box selection: hold Ctrl and drag on the workspace to rubber-band select
   // blocks. Off by default; the feature implementation reads
   // workspace.options.boxSelect. Forced off in readOnly mode.
@@ -135,6 +142,7 @@ Blockly.Options = function(options) {
   this.hasTrashcan = hasTrashcan;
   this.hasSounds = hasSounds;
   this.hasCss = hasCss;
+  this.frames = hasFrames;
   // Defaults to on. WorkspaceSvg reads this once at construction and can be
   // overridden later with WorkspaceSvg.setViewportCullingEnabled().
   this.viewportCulling = options['viewportCulling'] !== false;
