@@ -25,6 +25,22 @@ Blockly.IntersectionObserver = function(workspace) {
   this.restoreBacklog_ = 0;
   // Watchdog for the frames this pass schedules for itself.
   this.autoContinueStalls_ = 0;
+  // PATCH 21 (2026-11-07): tail-cull state. tailWindows_ caches the cut set of
+  // each long stack against the workspace geometry generation; tailCulledBlocks_
+  // is the set of roots currently in the offscreen layer because of a cut.
+  this.tailWindows_ = new Map();
+  this.tailCulledBlocks_ = new Set();
+  this.tailDesired_ = [];
+  this.tailDesiredSet_ = new Set();
+  // PATCH 22: reused per-walk visit set. Blocks form a tree, but a stale
+  // childBlocks_ entry must never be able to make the walk diverge.
+  this.tailVisited_ = new Set();
+  this.tailPending_ = false;
+  // PATCH 25: per-pass walk profiling, reset at the top of every full pass.
+  this.tailWalkNodes_ = 0;
+  this.tailWalkMs_ = 0;
+  this.tailWalkCount_ = 0;
+  this.tailWalkTruncated_ = 0;
   this.checkForIntersections = this.checkForIntersections.bind(this);
 };
 
@@ -101,6 +117,52 @@ Blockly.IntersectionObserver.RENDER_BUDGET_MS = 4;
 Blockly.IntersectionObserver.CLOCK_STRIDE = 8;
 
 /**
+ * PATCH 21/23 (2026-11-07): distance below the viewport, in workspace units,
+ * at which the tail cut sits. PATCH 23 decoupled this from the window step:
+ * the cut must stay far enough ahead that restoring the tail (an O(n) walk
+ * plus a whole-subtree reattach and raster) finishes BEFORE the viewport
+ * reaches it. A larger margin costs a handful of extra DOM blocks per visible
+ * branch, not a full screen of them.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.TAIL_CULL_HYSTERESIS = 400;
+
+/**
+ * PATCH 23 (2026-11-07): how far the viewport may travel before the cut set
+ * is recomputed. This value -- not the margin above -- controls how often the
+ * O(n) walk runs. Keeping it at 200 leaves the recompute frequency (and thus
+ * the JS cost) unchanged; the extra 200 units of margin are pure lead time
+ * for the restore, which is what removes the blank-then-pop frame.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.TAIL_CULL_WINDOW_STEP = 200;
+
+/**
+ * PATCH 21: a stack shorter than this (workspace units) is not worth walking.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.TAIL_CULL_MIN_HEIGHT = 1200;
+
+/**
+ * PATCH 21: per-frame DOM budgets for tail segments, kept separate from the
+ * whole-stack unload/restore budgets.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.MAX_TAIL_CULL_PER_FRAME = 8;
+Blockly.IntersectionObserver.MAX_TAIL_RESTORE_PER_FRAME = 16;
+
+/**
+ * PATCH 22 (2026-11-07): hard node cap for one stack walk. A truncated walk
+ * keeps the previous cut set instead of applying a partial one, so a huge
+ * project can never turn a scroll into an unbounded main-thread task. There is
+ * deliberately no wall-clock budget: Gandi measures ~19 ms for a 7000-block
+ * walk, and a 4 ms cap would truncate every medium project and disable tail
+ * culling altogether. The window hysteresis is what keeps walks rare.
+ * @const {number}
+ */
+Blockly.IntersectionObserver.TAIL_CULL_MAX_WALK = 20000;
+
+/**
  * Counters for profiling, mirrored onto window.__cullingStats. Kept in one
  * reused object so a per-frame update does not allocate.
  */
@@ -114,7 +176,18 @@ Blockly.IntersectionObserver.stats = {
   // pass from a backed-up one.
   rendered: 0,
   restoreBacklog: 0,
-  renderBacklog: 0
+  renderBacklog: 0,
+  // PATCH 21 (2026-11-07): segments cut / restored inside visible stacks.
+  tailCulled: 0,
+  tailRestored: 0,
+  tailPending: 0,
+  // PATCH 25 (2026-11-07): cost of the decision half, so a slow pass can be
+  // attributed to the stack walk instead of guessed at from lastMs alone.
+  tailWalkMs: 0,
+  tailWalks: 0,
+  tailWalkNodes: 0,
+  tailTruncated: 0,
+  tailWindows: 0
 };
 
 /**
@@ -156,6 +229,11 @@ Blockly.IntersectionObserver.prototype.unobserve = function(block) {
   this.observing = this.observing.filter(function(i) {
     return i !== block;
   });
+  // PATCH 21: a stack that stopped being observed must not keep a cached cut
+  // set (and with it a reference to blocks that may be disposed).
+  if (this.tailWindows_) {
+    this.tailWindows_.delete(block);
+  }
   // PATCH 11 (2026-10-10): membership changed -> cached rects are stale.
   this.contentDirty_ = true;
 };
@@ -169,6 +247,13 @@ Blockly.IntersectionObserver.prototype.dispose = function() {
   this.restoreCandidates_ = [];
   this.restoreBacklog_ = 0;
   this.autoContinueStalls_ = 0;
+  // PATCH 21: drop tail-cull bookkeeping; it holds block references.
+  this.tailWindows_.clear();
+  this.tailCulledBlocks_.clear();
+  this.tailDesired_.length = 0;
+  this.tailDesiredSet_.clear();
+  this.tailVisited_.clear();
+  this.tailPending_ = false;
   this.workspace = null;
 };
 
@@ -358,6 +443,251 @@ Blockly.IntersectionObserver.prototype.flushPendingRenders_ = function(
   return rendered;
 };
 
+/**
+ * PATCH 21 (2026-11-07): forget cached tail windows. With `restore`, every cut
+ * segment is attached back immediately, outside any budget. Used when culling
+ * is switched off and by the observer's own reset paths.
+ * @param {boolean} restore Whether to attach the cut roots back.
+ * @package
+ */
+Blockly.IntersectionObserver.prototype.clearTailCullState_ = function(restore) {
+  if (restore) {
+    this.tailCulledBlocks_.forEach(function(block) {
+      if (block.workspace && block.unloaded_) {
+        block.setTailCulled_(false);
+      }
+    });
+  }
+  this.tailCulledBlocks_.clear();
+  this.tailWindows_.clear();
+  this.tailDesired_.length = 0;
+  this.tailDesiredSet_.clear();
+  this.tailVisited_.clear();
+  this.tailPending_ = false;
+};
+
+/**
+ * PATCH 21: restore every cut segment of one stack immediately. A whole-stack
+ * unload moves the top <g> into the offscreen layer; an anchor left inside
+ * that subtree could not be recovered afterwards.
+ * @param {!Blockly.BlockSvg} root Top-level block of the stack.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.restoreTailCutsForStack_ = function(root) {
+  var done = [];
+  this.tailCulledBlocks_.forEach(function(block) {
+    if (!block.workspace || !block.unloaded_) {
+      done.push(block);
+    } else if (block.getRootBlock() === root) {
+      block.setTailCulled_(false);
+      done.push(block);
+    }
+  });
+  for (var i = 0; i < done.length; i++) {
+    this.tailCulledBlocks_.delete(done[i]);
+  }
+  this.tailWindows_.delete(root);
+};
+
+/**
+ * PATCH 25 (2026-11-07): accumulate one stack walk into the per-pass counters.
+ * Reading the clock here is fine -- the decision half may not do geometry
+ * reads (getBoundingClientRect / getComputedTextLength), but a monotonic clock
+ * is not a layout read.
+ * @param {number} nodes Blocks visited.
+ * @param {number} startTime Clock reading taken before the walk.
+ * @param {boolean} hasPerf Whether performance.now is available.
+ * @param {boolean} truncated Whether the node cap stopped the walk.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.recordTailWalk_ = function(
+    nodes, startTime, hasPerf, truncated) {
+  this.tailWalkNodes_ += nodes;
+  this.tailWalkCount_++;
+  if (truncated) {
+    this.tailWalkTruncated_++;
+  }
+  if (hasPerf) {
+    this.tailWalkMs_ += performance.now() - startTime;
+  }
+};
+
+/**
+ * PATCH 21/22: walk one stack and return the first block of every branch that
+ * starts below cutLine. Iterative, so a 4000-block chain cannot overflow the
+ * JS stack. Reads only attributes and Block geometry: no getBoundingClientRect,
+ * no getComputedTextLength, and no DOM writes.
+ *
+ * Block.getChildren(false) already returns EVERY child including the next
+ * block (Block.setParent pushes unconditionally, block.js:585). Adding
+ * getNextBlock() on top of it visits each next block twice, which makes the
+ * walk exponential in stack depth -- a deep if/else froze the editor.
+ * @param {!Blockly.BlockSvg} top Top-level block of the stack.
+ * @param {number} startY Workspace y of the stack top.
+ * @param {number} cutLine Workspace y below which a block may be cut.
+ * @param {?Element} draggedNode Root currently on the drag surface.
+ * @return {?Array.<!Blockly.BlockSvg>} Cut blocks, or null when the walk hit
+ *     a safety budget (the caller then keeps the previous cut set).
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.collectTailCuts_ = function(
+    top, startY, cutLine, draggedNode) {
+  var hasPerf = typeof performance !== 'undefined' && !!performance.now;
+  var startTime = hasPerf ? performance.now() : 0;
+  var cuts = [];
+  var pending = [{block: top, y: startY}];
+  var visited = this.tailVisited_;
+  visited.clear();
+  var maxWalk = Blockly.IntersectionObserver.TAIL_CULL_MAX_WALK;
+  while (pending.length) {
+    var item = pending.pop();
+    var block = item.block;
+    if (!block || !block.workspace || visited.has(block)) {
+      continue;
+    }
+    visited.add(block);
+    if (visited.size > maxWalk) {
+      this.recordTailWalk_(visited.size, startTime, hasPerf, true);
+      return null;
+    }
+    // PATCH 21 FIX (2026-11-07): a detached cut must NOT be pinned into the
+    // desired set. This walk is geometry-only, and an unloaded root keeps both
+    // its Block links and its transform attribute while it sits in the
+    // offscreen layer, so descending through it lets the cut point move down
+    // as the viewport scrolls. Pinning it froze the cut: the tail never came
+    // back unless some unrelated operation forced a reattach.
+    var root = block.getSvgRoot && block.getSvgRoot();
+    if (!root || (draggedNode && root === draggedNode)) {
+      continue;
+    }
+    if (item.y > cutLine && block.getParent()) {
+      cuts.push(block);
+      continue;
+    }
+    var children = block.getChildren && block.getChildren(false);
+    for (var i = 0; children && i < children.length; i++) {
+      var child = children[i];
+      var childRoot = child && child.getSvgRoot && child.getSvgRoot();
+      var rel = childRoot ? Blockly.utils.getRelativeXY(childRoot) : null;
+      pending.push({block: child, y: item.y + (rel ? rel.y : 0)});
+    }
+  }
+  this.recordTailWalk_(visited.size, startTime, hasPerf, false);
+  return cuts;
+};
+
+/**
+ * PATCH 21/23: window hysteresis. Reuse the last cut set while the viewport
+ * stays inside the cached window and workspace geometry has not changed. The
+ * key is an integer generation counter, never a floating point bounding box.
+ * Window size uses WINDOW_STEP, cut position uses HYSTERESIS; PATCH 21 used
+ * one constant for both, so a recompute only started when the cut had already
+ * reached the viewport edge -- too late to hide the restore on a big project.
+ * @param {!Blockly.BlockSvg} top Top-level block.
+ * @param {!Object} rect Cached content rectangle, workspace units.
+ * @param {number} viewportTop Workspace y at the top of the viewport.
+ * @param {number} viewportBottom Workspace y at the bottom of the viewport.
+ * @param {number} generation Workspace geometry generation.
+ * @param {?Element} draggedNode Root currently on the drag surface.
+ * @return {!Array.<!Blockly.BlockSvg>} Cut blocks.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.computeTailCuts_ = function(
+    top, rect, viewportTop, viewportBottom, generation, draggedNode) {
+  var h = Blockly.IntersectionObserver.TAIL_CULL_HYSTERESIS;
+  var w = Blockly.IntersectionObserver.TAIL_CULL_WINDOW_STEP;
+  // A stack that is still display:none or still in the offscreen layer must not
+  // cache an empty cut set: the restore happens later in this very pass, and
+  // the window would otherwise keep handing back "nothing to cut" forever.
+  if (top.unloaded_ || !top.intersects_) {
+    this.tailWindows_.delete(top);
+    return [];
+  }
+  var win = this.tailWindows_.get(top);
+  if (win && win.generation === generation &&
+      viewportTop >= win.minY && viewportBottom <= win.maxY) {
+    return win.cuts;
+  }
+  var cuts = this.collectTailCuts_(top, rect.top,
+      viewportBottom + h, draggedNode);
+  if (!cuts) {
+    // PATCH 22: a truncated walk must not be cached and must not change the
+    // desired set. Applying a partial cut set would restore every detached
+    // segment of the branches we never reached, causing a DOM surge exactly
+    // on the frame that is already expensive.
+    return win ? win.cuts : [];
+  }
+  this.tailWindows_.set(top, {
+    minY: viewportTop - w,
+    maxY: viewportBottom + w,
+    generation: generation,
+    cuts: cuts
+  });
+  return cuts;
+};
+
+/**
+ * PATCH 21: incremental apply. Only the difference between the desired cut set
+ * and what is actually detached touches the DOM; when cut points have not
+ * moved this performs zero DOM operations. Cull and restore run on independent
+ * per-frame budgets.
+ * @param {!Array.<!Blockly.BlockSvg>} desired Cut blocks wanted this frame.
+ * @return {{culled: number, restored: number}} Work done.
+ * @private
+ */
+Blockly.IntersectionObserver.prototype.applyTailCuts_ = function(desired) {
+  var desiredSet = this.tailDesiredSet_;
+  desiredSet.clear();
+  for (var a = 0; a < desired.length; a++) {
+    if (desired[a]) {
+      desiredSet.add(desired[a]);
+    }
+  }
+  var stale = [];
+  var restore = [];
+  this.tailCulledBlocks_.forEach(function(block) {
+    if (!block.workspace || !block.unloaded_ || !block.tailCulled_) {
+      stale.push(block);
+    } else if (!desiredSet.has(block)) {
+      restore.push(block);
+    }
+  });
+  for (var s = 0; s < stale.length; s++) {
+    this.tailCulledBlocks_.delete(stale[s]);
+  }
+  var cull = [];
+  desiredSet.forEach(function(block) {
+    if (block && block.workspace && !block.unloaded_) {
+      cull.push(block);
+    }
+  });
+  var maxRestore = Blockly.IntersectionObserver.MAX_TAIL_RESTORE_PER_FRAME;
+  var maxCull = Blockly.IntersectionObserver.MAX_TAIL_CULL_PER_FRAME;
+  var restored = 0;
+  var culled = 0;
+  var i;
+  for (i = 0; i < restore.length && restored < maxRestore; i++) {
+    if (restore[i].setTailCulled_(false)) {
+      this.tailCulledBlocks_.delete(restore[i]);
+      restored++;
+    }
+  }
+  // PATCH 21 FIX: a new cut can be a descendant of an old one. Cutting it
+  // while its parent is still in the offscreen layer would leave its anchor
+  // unreachable, so finish every restore before starting any new cut.
+  if (restored < restore.length) {
+    cull.length = 0;
+  }
+  for (i = 0; i < cull.length && culled < maxCull; i++) {
+    if (cull[i].setTailCulled_(true)) {
+      this.tailCulledBlocks_.add(cull[i]);
+      culled++;
+    }
+  }
+  this.tailPending_ = restored < restore.length || culled < cull.length;
+  return {culled: culled, restored: restored};
+};
+
 Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   this.intersectionCheckQueued = false;
 
@@ -384,6 +714,8 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     // never comes back to the metered branch.
     this.restoreBacklog_ = 0;
     this.autoContinueStalls_ = 0;
+    // PATCH 21: culling off means no segment may stay in the offscreen layer.
+    this.clearTailCullState_(true);
     this.flushPendingRenders_(true);
     return;
   }
@@ -451,6 +783,24 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     selectedRoot = Blockly.selected.getRootBlock();
   }
   var unloadDistance = Blockly.IntersectionObserver.UNLOAD_SCREENS;
+  // PATCH 21 (2026-11-07): viewport in workspace units. canvasPos is already
+  // in screen pixels while rects are workspace units, so invert the same
+  // transform the visibility test uses.
+  var tailScale = workspaceScale > 0 ? workspaceScale : 1;
+  var viewportTop = -canvasPos.y / tailScale;
+  var viewportBottom = (workspaceHeight - canvasPos.y) / tailScale;
+  // PATCH 24: geometry generation is per top element now; query it at the call
+  // site so editing one stack cannot invalidate every other stack's window.
+  // PATCH 25: per-pass tail-walk counters, reset once before the read phase.
+  this.tailWalkNodes_ = 0;
+  this.tailWalkMs_ = 0;
+  this.tailWalkCount_ = 0;
+  this.tailWalkTruncated_ = 0;
+  var tailEnabled = canUnload &&
+      !(workspace.boxDragActiveBlocks_ && workspace.boxDragActiveBlocks_.size) &&
+      !(workspace.frameDragActiveBlocks_ && workspace.frameDragActiveBlocks_.size);
+  var tailDesired = this.tailDesired_;
+  tailDesired.length = 0;
   var candidates = null;
   var culledCount = 0;
   var unloadedCount = 0;
@@ -569,6 +919,24 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
       continue;
     }
 
+    // PATCH 21 (2026-11-07): decide the cut set for this visible stack. This
+    // is the read-only half: no DOM writes, and no geometry read that forces
+    // layout. Short stacks and the stack holding the selection are left alone.
+    if (tailEnabled &&
+        rect.height > Blockly.IntersectionObserver.TAIL_CULL_MIN_HEIGHT &&
+        block !== selectedRoot &&
+        !(Blockly.selected && Blockly.selected.workspace === workspace &&
+          typeof Blockly.selected.getRootBlock === 'function' &&
+          Blockly.selected.getRootBlock() === block)) {
+      var cuts = this.computeTailCuts_(block, rect, viewportTop,
+          viewportBottom, workspace.getGeometryGeneration_(block), draggedNode);
+      for (var t = 0; t < cuts.length; t++) {
+        tailDesired.push(cuts[t]);
+      }
+    } else if (this.tailWindows_.has(block)) {
+      this.tailWindows_.delete(block);
+    }
+
     // Visible. A stack that was hidden last frame is collected instead of being
     // written to the DOM here: a zoom out crosses the visibility threshold for
     // hundreds of stacks in the same frame, and doing them all at once is a
@@ -612,6 +980,14 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     this.restoreBacklog_ = 0;
   }
 
+  // PATCH 21: apply the cut diff before any whole-stack unload. An unload
+  // moves the top <g> into the offscreen layer, and an anchor still inside
+  // that subtree could not be recovered afterwards.
+  var tailResult = {culled: 0, restored: 0};
+  if (tailEnabled) {
+    tailResult = this.applyTailCuts_(tailDesired);
+  }
+
   // Unload the furthest stacks first, within the per-frame budget, so the next
   // frame already has less work to do.
   if (candidates) {
@@ -623,6 +999,7 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
     var limit = Math.min(candidates.length,
         Blockly.IntersectionObserver.MAX_UNLOAD_PER_FRAME);
     for (var c = 0; c < limit; c++) {
+      this.restoreTailCutsForStack_(candidates[c].block);
       candidates[c].block.setUnloaded_(true);
       if (candidates[c].block.unloaded_) {
         unloadedCount++;
@@ -647,6 +1024,17 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   stats.rendered = renderedCount;
   stats.restoreBacklog = this.restoreBacklog_;
   stats.renderBacklog = this.pendingRenders_.length;
+  // PATCH 21: segments cut / restored inside visible stacks this frame.
+  stats.tailCulled = tailResult.culled;
+  stats.tailRestored = tailResult.restored;
+  stats.tailPending = this.tailPending_ ? 1 : 0;
+  // PATCH 25: split the pass cost. tailWalkMs is the decision half only;
+  // lastMs minus that is the DOM apply + render half.
+  stats.tailWalkMs = this.tailWalkMs_;
+  stats.tailWalks = this.tailWalkCount_;
+  stats.tailWalkNodes = this.tailWalkNodes_;
+  stats.tailTruncated = this.tailWalkTruncated_;
+  stats.tailWindows = this.tailWindows_.size;
   stats.lastMs = (hasPerformance ? performance.now() : Date.now()) - startTime;
   if (typeof window !== 'undefined') {
     window.__cullingStats = stats;
@@ -664,13 +1052,17 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
   // The requestAnimationFrame guard is not cosmetic: the fallback branch of
   // queueIntersectionCheck is a microtask, which drains inside this very frame
   // and never paints, turning the chain into an infinite loop.
-  if (restoredCount > 0 || renderedCount > 0) {
+  // PATCH 21: a cut diff that did not finish also needs the next frame.
+  var tailPending = tailEnabled && this.tailPending_;
+  if (restoredCount > 0 || renderedCount > 0 ||
+      tailResult.culled > 0 || tailResult.restored > 0) {
     this.autoContinueStalls_ = 0;
-  } else if (this.restoreBacklog_ > 0 || this.pendingRenders_.length > 0) {
+  } else if (this.restoreBacklog_ > 0 || this.pendingRenders_.length > 0 ||
+      tailPending) {
     this.autoContinueStalls_++;
   }
   var stillPending = this.restoreBacklog_ > 0 ||
-      this.pendingRenders_.length > 0 || renderedCount > 0;
+      this.pendingRenders_.length > 0 || renderedCount > 0 || tailPending;
   var workspaceVisible = !workspace.isVisible || workspace.isVisible();
   if (stillPending && workspaceVisible && window.requestAnimationFrame &&
       this.autoContinueStalls_ < 2) {

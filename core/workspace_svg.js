@@ -873,11 +873,18 @@ Blockly.WorkspaceSvg.prototype.isMovingBlocks_ = function() {
 Blockly.WorkspaceSvg.prototype.setViewportCullingEnabled = function(enabled) {
   this.viewportCullingEnabled_ = !!enabled;
   if (!this.viewportCullingEnabled_) {
-    var blocks = this.getTopBlocks(false);
+    // PATCH 21 (2026-11-07): tail culling detaches blocks *inside* a stack, so
+    // walking top blocks alone would leave those segments in the offscreen
+    // layer forever. Restore every unloaded root.
+    var blocks = this.getAllBlocks(false);
     for (var i = 0; i < blocks.length; i++) {
       if (blocks[i].unloaded_) {
         blocks[i].attachToCanvas_(true);
       }
+    }
+    if (this.intersectionObserver &&
+        this.intersectionObserver.clearTailCullState_) {
+      this.intersectionObserver.clearTailCullState_(false);
     }
   }
   this.queueIntersectionCheck();
@@ -1918,16 +1925,39 @@ Blockly.WorkspaceSvg.prototype.invalidateContentBounds_ = function(opt_element) 
     // stack is what takes a per-keystroke field edit from O(all stacks) to
     // O(one stack).
     this.contentRectDirty_.add(opt_element);
+    // PATCH 24 (2026-11-07): scope the geometry generation to this one top
+    // element. PATCH 21 bumped a single global counter, so editing a short
+    // script invalidated the cached tail-cut window of EVERY long stack and
+    // forced an O(n) walk over all of them on the next frame.
+    opt_element.contentGeneration_ = (opt_element.contentGeneration_ || 0) + 1;
   } else {
     // Unknown, or a caller that can affect anything: re-seed from scratch.
     this.contentRectAllDirty_ = true;
     this.contentRectDirty_.clear();
+    // A workspace-wide bump shifts every element's generation at once (see
+    // getGeometryGeneration_ below).
+    this.contentGeneration_ = (this.contentGeneration_ || 0) + 1;
   }
   if (this.intersectionObserver) {
     // PATCH 11 (2026-10-10): the intersection observer caches per-block rects
     // off this same signal, because that geometry too only changes with content.
     this.intersectionObserver.contentDirty_ = true;
   }
+};
+
+/**
+ * PATCH 24 (2026-11-07): integer geometry generation for one top element.
+ * A per-element bump invalidates only that element's cached cut set; a
+ * workspace-wide bump shifts every element at once. The per-element counter
+ * lives on the element itself, so disposing the element also drops it and no
+ * bookkeeping map can leak block references.
+ * @param {!Object} element A top block, comment or frame.
+ * @return {number} Monotonic generation for this element.
+ * @package
+ */
+Blockly.WorkspaceSvg.prototype.getGeometryGeneration_ = function(element) {
+  return (this.contentGeneration_ || 0) +
+      ((element && element.contentGeneration_) || 0);
 };
 
 /**

@@ -94,6 +94,10 @@ Blockly.BlockSvg = function(workspace, prototypeName, opt_id) {
   this.unloaded_ = false;
   /** @type {Node} @private */
   this.anchorNode_ = null;
+  /** @type {?Element} PATCH 21: host to fall back to if the anchor is lost. @private */
+  this.hostNode_ = null;
+  /** @type {boolean} PATCH 21: unloaded by tail culling, not whole-stack. @private */
+  this.tailCulled_ = false;
   /** @type {boolean} @private */
   this.needsRenderOnReload_ = false;
   // PATCH 19 (2026-11-06): whether this block is already in the observer's
@@ -330,14 +334,15 @@ Blockly.BlockSvg.prototype.setIntersects = function(intersects) {
 };
 
 /**
- * Unload or restore this block's SVG root. Only the intersection observer may
- * pass true; every other caller restores through setIntersects(true).
+ * Unload or restore a whole top level stack. Only the intersection observer may
+ * pass true; every other caller restores through setIntersects(true). The
+ * intersects_ guard is what keeps a visible stack in the document.
  *
- * Unloading moves the whole top level stack out of the document. The block
- * object, its geometry and the workspace's content rect table all stay valid,
- * so nothing outside the DOM notices. A stack is unloaded only after it has
- * already been culled with display:none, so a bug here can at worst leave a
- * block hidden, never remove a block that should have been visible.
+ * The block object, its geometry and the workspace's content rect table all
+ * stay valid, so nothing outside the DOM notices. PATCH 21: tail culling shares
+ * this unloaded_ state for blocks *inside* a stack (see setTailCulled_), which
+ * is why render(), Field.updateWidth and the forced restore paths already do
+ * the right thing for a root with no layout.
  * @param {boolean} unload True to take the stack out of the document.
  * @package
  */
@@ -355,11 +360,46 @@ Blockly.BlockSvg.prototype.setUnloaded_ = function(unload) {
 };
 
 /**
- * Put this block's SVG root back on the workspace canvas, at the position it
- * occupied before it was unloaded.
+ * PATCH 21 (2026-11-07): tail culling. Take a block *inside* a visible stack
+ * out of the document together with its whole DOM subtree (its next chain and
+ * every statement/value child). The cut is made at the first block below the
+ * viewport, so everything further down leaves with it.
+ *
+ * Shares unloaded_ with whole-stack unloading on purpose: a detached root has
+ * no layout, and every existing guard keyed on unloaded_ must apply here too.
+ * tailCulled_ only records *why* it was detached so the observer can tell the
+ * two budgets apart. Unlike setUnloaded_ this never checks intersects_ -- a
+ * child block is always intersects_ === true, see updateIntersectionObserver.
+ * @param {boolean} cull True to detach the subtree, false to restore it.
+ * @return {boolean} True if the state changed.
+ * @package
+ */
+Blockly.BlockSvg.prototype.setTailCulled_ = function(cull) {
+  if (cull) {
+    if (this.unloaded_ || this.tailCulled_ || !this.getParent()) {
+      return false;
+    }
+    if (!this.detachFromCanvas_(true)) {
+      return false;
+    }
+    this.tailCulled_ = true;
+    return true;
+  }
+  if (!this.tailCulled_) {
+    return false;
+  }
+  this.attachToCanvas_(true);
+  this.tailCulled_ = false;
+  return true;
+};
+
+/**
+ * Put this block's SVG root back into the DOM node it was taken from, at the
+ * position it occupied before it was unloaded. For a top-level stack that node
+ * is the workspace canvas; a tail-culling pass can later use any other host.
  * @param {boolean=} opt_skipRender Do not consume a pending render. Forced
  *     restores pass true and let the next culling pass render in a batch.
- * @return {boolean} True if the root is on the canvas afterwards.
+ * @return {boolean} True if the root is back in the document afterwards.
  * @private
  */
 Blockly.BlockSvg.prototype.attachToCanvas_ = function(opt_skipRender) {
@@ -369,25 +409,34 @@ Blockly.BlockSvg.prototype.attachToCanvas_ = function(opt_skipRender) {
   this.anchorNode_ = null;
   this.unloaded_ = false;
   var canvas = workspace && workspace.getCanvas ? workspace.getCanvas() : null;
-  if (root && canvas && root.parentNode !== canvas) {
+  // PATCH 20 (2026-11-07): the anchor's parent IS the node the root was taken
+  // from. Reading it off the anchor keeps one source of truth. PATCH 21: if the
+  // anchor was removed, hostNode_ remembers the original parent; a child block
+  // must never fall back to the canvas because its translate() is relative to
+  // the parent block's <g>.
+  var host = (anchor && anchor.parentNode) || this.hostNode_;
+  var target = host || canvas;
+  if (root && canvas && target && root.parentNode !== target) {
     var inserted = false;
-    if (anchor && anchor.parentNode === canvas) {
+    if (host && anchor && anchor.parentNode === host) {
       try {
-        canvas.insertBefore(root, anchor);
+        host.insertBefore(root, anchor);
         inserted = true;
       } catch (e) {
         inserted = false;
       }
     }
     if (!inserted) {
-      // The anchor is gone (its siblings were reordered or removed). Falling
-      // back to the end of the canvas only costs z-order, not correctness.
-      canvas.appendChild(root);
+      // Costs z-order, not correctness. For a whole stack the host is the
+      // canvas; for a tail-culled segment it is the parent block's <g>.
+      target.appendChild(root);
     }
   }
   if (anchor && anchor.parentNode) {
     anchor.parentNode.removeChild(anchor);
   }
+  this.hostNode_ = null;
+  this.tailCulled_ = false;
   if (this.needsRenderOnReload_ && !opt_skipRender) {
     this.needsRenderOnReload_ = false;
     this.render();
@@ -396,23 +445,35 @@ Blockly.BlockSvg.prototype.attachToCanvas_ = function(opt_skipRender) {
 };
 
 /**
- * Take this block's SVG root out of the document, leaving a comment node where
- * it used to be so the z-order survives the round trip. Comment nodes are
- * skipped by rendering, style resolution and :first-child style selectors.
- * @return {boolean} True if the stack was unloaded.
+ * Take this block's SVG root out of the document, leaving a comment node in
+ * the node that hosted it so the z-order survives the round trip. Comment
+ * nodes are skipped by rendering, style resolution and :first-child selectors.
+ * @param {boolean=} opt_allowNested PATCH 21: allow a root whose host is a
+ *     parent block's <g> (tail culling). Whole-stack unloading leaves this
+ *     unset, so only roots sitting directly on the canvas are eligible.
+ * @return {boolean} True if the root was unloaded.
  * @private
  */
-Blockly.BlockSvg.prototype.detachFromCanvas_ = function() {
+Blockly.BlockSvg.prototype.detachFromCanvas_ = function(opt_allowNested) {
   var root = this.svgGroup_;
   var workspace = this.workspace;
   if (!root || !workspace || this.unloaded_) {
     return false;
   }
   var canvas = workspace.getCanvas ? workspace.getCanvas() : null;
-  // Only stacks sitting directly on the canvas can be unloaded. A block on the
-  // drag surface, inside a flyout or inside a parent block has a parent whose
-  // structure must stay intact.
-  if (!canvas || root.parentNode !== canvas) {
+  // PATCH 20 (2026-11-07): anchor against the node that actually hosts the
+  // root instead of assuming the canvas. PATCH 21: nested hosts opt in.
+  var host = root.parentNode;
+  if (!canvas || !host) {
+    return false;
+  }
+  // A block on the drag surface, inside a flyout or inside a mutator has a
+  // parent whose structure must stay intact; those workspaces are excluded by
+  // the observer gate, this is the per-root safety net.
+  if (!opt_allowNested && host !== canvas) {
+    return false;
+  }
+  if (host === workspace.offscreenBlockLayer_) {
     return false;
   }
   var layer = workspace.getOffscreenBlockLayer_ ?
@@ -423,7 +484,7 @@ Blockly.BlockSvg.prototype.detachFromCanvas_ = function() {
   var anchor = null;
   try {
     anchor = document.createComment('blockly:unloaded:' + this.id);
-    canvas.insertBefore(anchor, root);
+    host.insertBefore(anchor, root);
   } catch (e) {
     anchor = null;
   }
@@ -431,8 +492,9 @@ Blockly.BlockSvg.prototype.detachFromCanvas_ = function() {
     return false;
   }
   this.anchorNode_ = anchor;
+  this.hostNode_ = host;
   this.unloaded_ = true;
-  // appendChild implicitly detaches the root from the canvas.
+  // appendChild implicitly detaches the root from its host.
   layer.appendChild(root);
   return true;
 };
@@ -456,8 +518,10 @@ Blockly.BlockSvg.prototype.repairUnloadedState_ = function() {
     return false;
   }
   this.unloaded_ = false;
+  this.tailCulled_ = false;
   var anchor = this.anchorNode_;
   this.anchorNode_ = null;
+  this.hostNode_ = null;
   if (anchor && anchor.parentNode) {
     anchor.parentNode.removeChild(anchor);
   }
@@ -2029,6 +2093,11 @@ Blockly.BlockSvg.prototype.bringToFront = function() {
   // style+layout for the whole SVG (measured, 8 field clicks on a 400-block
   // stack: 621ms -> 249ms, worst frame 63.9ms -> 21.9ms). Doing nothing when the
   // stack is already last keeps repeated clicks free.
+  // PATCH 21: a tail-culled segment can be selected programmatically. Restore
+  // it before reordering, otherwise its parent is still the offscreen layer.
+  if (this.unloaded_) {
+    this.attachToCanvas_(true);
+  }
   var rootBlock = this.getRootBlock();
   var svgRoot = rootBlock.getSvgRoot();
   if (!svgRoot) {
