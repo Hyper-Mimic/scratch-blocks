@@ -282,5 +282,18 @@
     "NEW_BROADCAST_MESSAGE": "New message",
     "NEW_BROADCAST_MESSAGE_TITLE": "New message name:",
     "BROADCAST_MODAL_TITLE": "New Message",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 }

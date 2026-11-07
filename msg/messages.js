@@ -313,6 +313,21 @@ Blockly.Msg.EDIT_PROCEDURE = 'Edit';
 Blockly.Msg.SHOW_PROCEDURE_DEFINITION = 'Go to definition';
 Blockly.Msg.WORKSPACE_COMMENT_DEFAULT_TEXT = 'Say something...';
 
+// Frames
+Blockly.Msg.ADD_FRAME = 'Add Frame';
+Blockly.Msg.RENAME_FRAME = 'Rename Frame';
+Blockly.Msg.DELETE_FRAME = 'Delete Frame';
+Blockly.Msg.COLLAPSE_FRAME = 'Collapse Frame';
+Blockly.Msg.EXPAND_FRAME = 'Expand Frame';
+Blockly.Msg.FRAME_DEFAULT_TITLE = 'Frame';
+Blockly.Msg.CHANGE_FRAME_COLOUR = 'Change Frame Color';
+Blockly.Msg.LOCK_FRAME = 'Lock Frame';
+Blockly.Msg.UNLOCK_FRAME = 'Unlock Frame';
+Blockly.Msg.CREATE_FRAME_FROM_SELECTION = 'Create Frame from Selection';
+Blockly.Msg.CLEAN_UP_FRAME = 'Clean Up Blocks in Frame';
+Blockly.Msg.FIT_FRAME_TO_CONTENT = 'Fit Frame to Content';
+Blockly.Msg.DELETE_FRAME_BLOCKS = 'Delete Blocks in Frame';
+
 // Color
 Blockly.Msg.COLOUR_HUE_LABEL = 'Color';
 Blockly.Msg.COLOUR_SATURATION_LABEL = 'Saturation';

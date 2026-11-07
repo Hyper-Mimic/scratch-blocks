@@ -291,7 +291,21 @@ Blockly.ScratchMsgs.locales["ab"] =
     "NEW_BROADCAST_MESSAGE": "Ацҳамҭа ҿыц",
     "NEW_BROADCAST_MESSAGE_TITLE": "Ацҳамҭа ахьӡ ҿыц:",
     "BROADCAST_MODAL_TITLE": "Ацҳамҭа ҿыц",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ацҳамҭа1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ацҳамҭа1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["af"] =
@@ -578,7 +592,21 @@ Blockly.ScratchMsgs.locales["af"] =
     "NEW_BROADCAST_MESSAGE": "Nuwe boodskap",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nuwe boodskapnaam:",
     "BROADCAST_MODAL_TITLE": "Nuwe Boodskap",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "boodskap1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "boodskap1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ar"] =
@@ -865,7 +893,21 @@ Blockly.ScratchMsgs.locales["ar"] =
     "NEW_BROADCAST_MESSAGE": "رسالة جديدة",
     "NEW_BROADCAST_MESSAGE_TITLE": "اسم الرسالة الجديدة:",
     "BROADCAST_MODAL_TITLE": "رسالة جديدة",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "الرسالة 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "الرسالة 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["am"] =
@@ -1152,7 +1194,21 @@ Blockly.ScratchMsgs.locales["am"] =
     "NEW_BROADCAST_MESSAGE": "አዲስ መልዕክት",
     "NEW_BROADCAST_MESSAGE_TITLE": "አዲስ የመልዕክት ስም፡",
     "BROADCAST_MODAL_TITLE": "አዲስ መልእክት",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "መልእክት1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "መልእክት1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["an"] =
@@ -1439,7 +1495,21 @@ Blockly.ScratchMsgs.locales["an"] =
     "NEW_BROADCAST_MESSAGE": "Nuevo mensache",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nombre d'o nuevo mensache:",
     "BROADCAST_MODAL_TITLE": "Nuevo Mensache",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensache1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensache1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ast"] =
@@ -1726,7 +1796,21 @@ Blockly.ScratchMsgs.locales["ast"] =
     "NEW_BROADCAST_MESSAGE": "Mensaxe nuevu",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nome del nuevu mensaxe:",
     "BROADCAST_MODAL_TITLE": "Mensaxe Nuevu",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaxe1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaxe1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["az"] =
@@ -2013,7 +2097,21 @@ Blockly.ScratchMsgs.locales["az"] =
     "NEW_BROADCAST_MESSAGE": "Yeni ismarıc",
     "NEW_BROADCAST_MESSAGE_TITLE": "Yeni ismarıcın adı:",
     "BROADCAST_MODAL_TITLE": "Yeni ismarıc",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ismarıc 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ismarıc 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["id"] =
@@ -2300,7 +2398,21 @@ Blockly.ScratchMsgs.locales["id"] =
     "NEW_BROADCAST_MESSAGE": "Pesan baru",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nama pesan baru:",
     "BROADCAST_MODAL_TITLE": "Pesan Baru",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "pesan1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "pesan1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["bn"] =
@@ -2587,7 +2699,21 @@ Blockly.ScratchMsgs.locales["bn"] =
     "NEW_BROADCAST_MESSAGE": "নতুন বার্তা",
     "NEW_BROADCAST_MESSAGE_TITLE": "নতুন বার্তার নাম:",
     "BROADCAST_MODAL_TITLE": "নতুন বার্তা",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "বার্তা1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "বার্তা1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["be"] =
@@ -2874,7 +3000,21 @@ Blockly.ScratchMsgs.locales["be"] =
     "NEW_BROADCAST_MESSAGE": "Новае паведамленне",
     "NEW_BROADCAST_MESSAGE_TITLE": "Новае імя паведамлення:",
     "BROADCAST_MODAL_TITLE": "Новае паведамленне",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "паведамленне1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "паведамленне1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["bg"] =
@@ -3161,7 +3301,21 @@ Blockly.ScratchMsgs.locales["bg"] =
     "NEW_BROADCAST_MESSAGE": "Ново съобщение",
     "NEW_BROADCAST_MESSAGE_TITLE": "Име на новото съобщение:",
     "BROADCAST_MODAL_TITLE": "Ново съобщение",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "съобщение1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "съобщение1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ca"] =
@@ -3448,7 +3602,21 @@ Blockly.ScratchMsgs.locales["ca"] =
     "NEW_BROADCAST_MESSAGE": "Nou missatge",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nou nom per al missatge:",
     "BROADCAST_MODAL_TITLE": "Missatge nou",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "missatge1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "missatge1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["cs"] =
@@ -3735,7 +3903,21 @@ Blockly.ScratchMsgs.locales["cs"] =
     "NEW_BROADCAST_MESSAGE": "Nová zpráva",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nový název zprávy:",
     "BROADCAST_MODAL_TITLE": "Nová zpráva",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "zpráva1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "zpráva1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["cy"] =
@@ -4022,7 +4204,21 @@ Blockly.ScratchMsgs.locales["cy"] =
     "NEW_BROADCAST_MESSAGE": "Neges newydd",
     "NEW_BROADCAST_MESSAGE_TITLE": "Enw neges newydd:",
     "BROADCAST_MODAL_TITLE": "Neges Newydd",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "neges1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "neges1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["da"] =
@@ -4309,7 +4505,21 @@ Blockly.ScratchMsgs.locales["da"] =
     "NEW_BROADCAST_MESSAGE": "Ny besked",
     "NEW_BROADCAST_MESSAGE_TITLE": "Navn på ny besked:",
     "BROADCAST_MODAL_TITLE": "Ny besked",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "besked1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "besked1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["de"] =
@@ -4596,7 +4806,21 @@ Blockly.ScratchMsgs.locales["de"] =
     "NEW_BROADCAST_MESSAGE": "Neue Nachricht",
     "NEW_BROADCAST_MESSAGE_TITLE": "Neuer Nachrichtentext:",
     "BROADCAST_MODAL_TITLE": "Neue Nachricht",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "Nachricht1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "Nachricht1",
+    "ADD_FRAME": "Rahmen hinzufügen",
+    "RENAME_FRAME": "Rahmen umbenennen",
+    "DELETE_FRAME": "Rahmen löschen",
+    "COLLAPSE_FRAME": "Rahmen einklappen",
+    "EXPAND_FRAME": "Rahmen ausklappen",
+    "FRAME_DEFAULT_TITLE": "Rahmen",
+    "CHANGE_FRAME_COLOUR": "Rahmenfarbe ändern",
+    "DUPLICATE_X_BLOCKS": "%1 Bausteine duplizieren",
+    "LOCK_FRAME": "Rahmen sperren",
+    "UNLOCK_FRAME": "Rahmen entsperren",
+    "CREATE_FRAME_FROM_SELECTION": "Auswahl als Rahmen erstellen",
+    "CLEAN_UP_FRAME": "Blöcke im Rahmen ordnen",
+    "FIT_FRAME_TO_CONTENT": "An Inhalt anpassen",
+    "DELETE_FRAME_BLOCKS": "Blöcke im Rahmen löschen"
 };
 
 Blockly.ScratchMsgs.locales["et"] =
@@ -4883,7 +5107,21 @@ Blockly.ScratchMsgs.locales["et"] =
     "NEW_BROADCAST_MESSAGE": "Uus teade",
     "NEW_BROADCAST_MESSAGE_TITLE": "Uue teate nimi:",
     "BROADCAST_MODAL_TITLE": "Uus teade",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "teade1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "teade1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["el"] =
@@ -5170,7 +5408,21 @@ Blockly.ScratchMsgs.locales["el"] =
     "NEW_BROADCAST_MESSAGE": "Νέο μήνυμα",
     "NEW_BROADCAST_MESSAGE_TITLE": "Όνομα νέου μηνύματος:",
     "BROADCAST_MODAL_TITLE": "Νέο μήνυμα",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "μήνυμα1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "μήνυμα1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["en"] =
@@ -5457,7 +5709,21 @@ Blockly.ScratchMsgs.locales["en"] =
     "NEW_BROADCAST_MESSAGE": "New message",
     "NEW_BROADCAST_MESSAGE_TITLE": "New message name:",
     "BROADCAST_MODAL_TITLE": "New Message",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["es"] =
@@ -5744,7 +6010,21 @@ Blockly.ScratchMsgs.locales["es"] =
     "NEW_BROADCAST_MESSAGE": "Nuevo mensaje",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nombre del mensaje:",
     "BROADCAST_MODAL_TITLE": "Nuevo Mensaje",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaje1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaje1",
+    "ADD_FRAME": "Añadir marco",
+    "RENAME_FRAME": "Renombrar marco",
+    "DELETE_FRAME": "Eliminar marco",
+    "COLLAPSE_FRAME": "Contraer marco",
+    "EXPAND_FRAME": "Expandir marco",
+    "FRAME_DEFAULT_TITLE": "Marco",
+    "CHANGE_FRAME_COLOUR": "Cambiar el color del marco",
+    "DUPLICATE_X_BLOCKS": "Duplicar %1 bloques",
+    "LOCK_FRAME": "Bloquear marco",
+    "UNLOCK_FRAME": "Desbloquear marco",
+    "CREATE_FRAME_FROM_SELECTION": "Crear marco desde la selección",
+    "CLEAN_UP_FRAME": "Ordenar bloques del marco",
+    "FIT_FRAME_TO_CONTENT": "Ajustar al contenido",
+    "DELETE_FRAME_BLOCKS": "Eliminar bloques del marco"
 };
 
 Blockly.ScratchMsgs.locales["es-419"] =
@@ -6031,7 +6311,21 @@ Blockly.ScratchMsgs.locales["es-419"] =
     "NEW_BROADCAST_MESSAGE": "Nuevo mensaje",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nombre para el nuevo mensaje:",
     "BROADCAST_MODAL_TITLE": "Nuevo Mensaje",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaje1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaje1",
+    "ADD_FRAME": "Añadir marco",
+    "RENAME_FRAME": "Renombrar marco",
+    "DELETE_FRAME": "Eliminar marco",
+    "COLLAPSE_FRAME": "Contraer marco",
+    "EXPAND_FRAME": "Expandir marco",
+    "FRAME_DEFAULT_TITLE": "Marco",
+    "CHANGE_FRAME_COLOUR": "Cambiar el color del marco",
+    "DUPLICATE_X_BLOCKS": "Duplicar %1 bloques",
+    "LOCK_FRAME": "Bloquear marco",
+    "UNLOCK_FRAME": "Desbloquear marco",
+    "CREATE_FRAME_FROM_SELECTION": "Crear marco desde la selección",
+    "CLEAN_UP_FRAME": "Ordenar bloques del marco",
+    "FIT_FRAME_TO_CONTENT": "Ajustar al contenido",
+    "DELETE_FRAME_BLOCKS": "Eliminar bloques del marco"
 };
 
 Blockly.ScratchMsgs.locales["eo"] =
@@ -6318,7 +6612,21 @@ Blockly.ScratchMsgs.locales["eo"] =
     "NEW_BROADCAST_MESSAGE": "Nova mesaĝo",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nomo de nova mesaĝo:",
     "BROADCAST_MODAL_TITLE": "Nova mesaĝo",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaĝo1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaĝo1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["eu"] =
@@ -6605,7 +6913,21 @@ Blockly.ScratchMsgs.locales["eu"] =
     "NEW_BROADCAST_MESSAGE": "Mezu berria",
     "NEW_BROADCAST_MESSAGE_TITLE": "Mezu berriaren izena:",
     "BROADCAST_MODAL_TITLE": "Mezu berria",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mezua1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mezua1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fa"] =
@@ -6892,7 +7214,21 @@ Blockly.ScratchMsgs.locales["fa"] =
     "NEW_BROADCAST_MESSAGE": "پیام جدید",
     "NEW_BROADCAST_MESSAGE_TITLE": "نام پیام جدید:",
     "BROADCAST_MODAL_TITLE": "پیام جدید",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "پیام 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "پیام 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fil"] =
@@ -7179,7 +7515,21 @@ Blockly.ScratchMsgs.locales["fil"] =
     "NEW_BROADCAST_MESSAGE": "Bagong mensahe",
     "NEW_BROADCAST_MESSAGE_TITLE": "Pangalan ng bagong mensahe:",
     "BROADCAST_MODAL_TITLE": "Bagong Mensahe",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensahe1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensahe1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fr"] =
@@ -7466,7 +7816,21 @@ Blockly.ScratchMsgs.locales["fr"] =
     "NEW_BROADCAST_MESSAGE": "Nouveau message",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nom du nouveau message :",
     "BROADCAST_MODAL_TITLE": "Nouveau message",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1",
+    "ADD_FRAME": "Ajouter un cadre",
+    "RENAME_FRAME": "Renommer le cadre",
+    "DELETE_FRAME": "Supprimer le cadre",
+    "COLLAPSE_FRAME": "Réduire le cadre",
+    "EXPAND_FRAME": "Développer le cadre",
+    "FRAME_DEFAULT_TITLE": "Cadre",
+    "CHANGE_FRAME_COLOUR": "Changer la couleur du cadre",
+    "DUPLICATE_X_BLOCKS": "Dupliquer %1 blocs",
+    "LOCK_FRAME": "Verrouiller le cadre",
+    "UNLOCK_FRAME": "Déverrouiller le cadre",
+    "CREATE_FRAME_FROM_SELECTION": "Créer un cadre à partir de la sélection",
+    "CLEAN_UP_FRAME": "Ranger les blocs du cadre",
+    "FIT_FRAME_TO_CONTENT": "Ajuster au contenu",
+    "DELETE_FRAME_BLOCKS": "Supprimer les blocs du cadre"
 };
 
 Blockly.ScratchMsgs.locales["fy"] =
@@ -7753,7 +8117,21 @@ Blockly.ScratchMsgs.locales["fy"] =
     "NEW_BROADCAST_MESSAGE": "Nij berjocht",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nije berjochttitel:",
     "BROADCAST_MODAL_TITLE": "Nij Berjocht",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "berjocht1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "berjocht1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ga"] =
@@ -8040,7 +8418,21 @@ Blockly.ScratchMsgs.locales["ga"] =
     "NEW_BROADCAST_MESSAGE": "Teachtaireacht nua",
     "NEW_BROADCAST_MESSAGE_TITLE": "Ainm na teachtaireachta nua:",
     "BROADCAST_MODAL_TITLE": "Teachtaireacht Nua",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "teachtaireacht1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "teachtaireacht1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["gd"] =
@@ -8327,7 +8719,21 @@ Blockly.ScratchMsgs.locales["gd"] =
     "NEW_BROADCAST_MESSAGE": "Teachdaireachd ùr",
     "NEW_BROADCAST_MESSAGE_TITLE": "Ainm na teachdaireachd ùire:",
     "BROADCAST_MODAL_TITLE": "teachdaireachd ùr",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "teachdaireachd1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "teachdaireachd1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["gl"] =
@@ -8614,7 +9020,21 @@ Blockly.ScratchMsgs.locales["gl"] =
     "NEW_BROADCAST_MESSAGE": "Nova mensaxe",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nome da nova mensaxe:",
     "BROADCAST_MODAL_TITLE": "Mensaxe nova",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaxe1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensaxe1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ko"] =
@@ -8901,7 +9321,21 @@ Blockly.ScratchMsgs.locales["ko"] =
     "NEW_BROADCAST_MESSAGE": "새로운 메시지",
     "NEW_BROADCAST_MESSAGE_TITLE": "새로운 메시지 이름:",
     "BROADCAST_MODAL_TITLE": "새로운 메시지",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "메시지1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "메시지1",
+    "ADD_FRAME": "프레임 추가",
+    "RENAME_FRAME": "프레임 이름 바꾸기",
+    "DELETE_FRAME": "프레임 삭제",
+    "COLLAPSE_FRAME": "프레임 접기",
+    "EXPAND_FRAME": "프레임 펼치기",
+    "FRAME_DEFAULT_TITLE": "프레임",
+    "CHANGE_FRAME_COLOUR": "프레임 색상 변경",
+    "DUPLICATE_X_BLOCKS": "%1개 블록 복제",
+    "LOCK_FRAME": "프레임 잠그기",
+    "UNLOCK_FRAME": "잠금 해제",
+    "CREATE_FRAME_FROM_SELECTION": "선택 영역을 프레임으로 만들기",
+    "CLEAN_UP_FRAME": "프레임 안 블록 정리",
+    "FIT_FRAME_TO_CONTENT": "내용에 맞추기",
+    "DELETE_FRAME_BLOCKS": "안의 블록 삭제"
 };
 
 Blockly.ScratchMsgs.locales["ha"] =
@@ -9188,7 +9622,21 @@ Blockly.ScratchMsgs.locales["ha"] =
     "NEW_BROADCAST_MESSAGE": "sabon saƙo",
     "NEW_BROADCAST_MESSAGE_TITLE": "sunan sabon saƙo:",
     "BROADCAST_MODAL_TITLE": "sabon saƙo",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "saƙon1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "saƙon1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hy"] =
@@ -9475,7 +9923,21 @@ Blockly.ScratchMsgs.locales["hy"] =
     "NEW_BROADCAST_MESSAGE": "Նոր հաղորդագրություն",
     "NEW_BROADCAST_MESSAGE_TITLE": "Նոր հաղորդագրության անունը՝",
     "BROADCAST_MODAL_TITLE": "Նոր հաղորդագրություն",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "հաղորդագրություն1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "հաղորդագրություն1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["he"] =
@@ -9762,7 +10224,21 @@ Blockly.ScratchMsgs.locales["he"] =
     "NEW_BROADCAST_MESSAGE": "מסר חדש",
     "NEW_BROADCAST_MESSAGE_TITLE": "צור מסר חדש",
     "BROADCAST_MODAL_TITLE": "מסר חדש",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "מסר 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "מסר 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hi"] =
@@ -10049,7 +10525,21 @@ Blockly.ScratchMsgs.locales["hi"] =
     "NEW_BROADCAST_MESSAGE": "नया संदेश ",
     "NEW_BROADCAST_MESSAGE_TITLE": "नए संदेश का नाम",
     "BROADCAST_MODAL_TITLE": "नया संदेश ",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "संदेश 1 "
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "संदेश 1 ",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hr"] =
@@ -10336,7 +10826,21 @@ Blockly.ScratchMsgs.locales["hr"] =
     "NEW_BROADCAST_MESSAGE": "Nova poruka",
     "NEW_BROADCAST_MESSAGE_TITLE": "Naziv nove poruke:",
     "BROADCAST_MODAL_TITLE": "Nova poruka",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "poruka1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "poruka1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["xh"] =
@@ -10623,7 +11127,21 @@ Blockly.ScratchMsgs.locales["xh"] =
     "NEW_BROADCAST_MESSAGE": "umyalezo omtsha",
     "NEW_BROADCAST_MESSAGE_TITLE": "igama lomyalezo elitsha",
     "BROADCAST_MODAL_TITLE": "umyalezo omtsha",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "umyalezo1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "umyalezo1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["zu"] =
@@ -10910,7 +11428,21 @@ Blockly.ScratchMsgs.locales["zu"] =
     "NEW_BROADCAST_MESSAGE": "Umyalezo omusha",
     "NEW_BROADCAST_MESSAGE_TITLE": "Igama lomyalezo elisha",
     "BROADCAST_MODAL_TITLE": "Umyalezo Omusha",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "umyalezo wokuqala"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "umyalezo wokuqala",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["is"] =
@@ -11197,7 +11729,21 @@ Blockly.ScratchMsgs.locales["is"] =
     "NEW_BROADCAST_MESSAGE": "Ný skilaboð",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nafn nýrra skilaboða",
     "BROADCAST_MODAL_TITLE": "Ný skilaboð",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "dæmiUmNafnÁSkilaboðum"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "dæmiUmNafnÁSkilaboðum",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["it"] =
@@ -11484,7 +12030,21 @@ Blockly.ScratchMsgs.locales["it"] =
     "NEW_BROADCAST_MESSAGE": "Nuovo messaggio...",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nome del nuovo messaggio:",
     "BROADCAST_MODAL_TITLE": "Nuovo Messaggio...",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "messaggio1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "messaggio1",
+    "ADD_FRAME": "Aggiungi riquadro",
+    "RENAME_FRAME": "Rinomina riquadro",
+    "DELETE_FRAME": "Elimina riquadro",
+    "COLLAPSE_FRAME": "Comprimi riquadro",
+    "EXPAND_FRAME": "Espandi riquadro",
+    "FRAME_DEFAULT_TITLE": "Riquadro",
+    "CHANGE_FRAME_COLOUR": "Cambia il colore del riquadro",
+    "DUPLICATE_X_BLOCKS": "Duplica %1 blocchi",
+    "LOCK_FRAME": "Blocca riquadro",
+    "UNLOCK_FRAME": "Sblocca riquadro",
+    "CREATE_FRAME_FROM_SELECTION": "Crea riquadro dalla selezione",
+    "CLEAN_UP_FRAME": "Ordina i blocchi nel riquadro",
+    "FIT_FRAME_TO_CONTENT": "Adatta al contenuto",
+    "DELETE_FRAME_BLOCKS": "Elimina i blocchi nel riquadro"
 };
 
 Blockly.ScratchMsgs.locales["ka"] =
@@ -11771,7 +12331,21 @@ Blockly.ScratchMsgs.locales["ka"] =
     "NEW_BROADCAST_MESSAGE": "ახალი შეტყობინება",
     "NEW_BROADCAST_MESSAGE_TITLE": "ახალი შეტყობინების სახელი",
     "BROADCAST_MODAL_TITLE": "ახალი შეტყობინება",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "შეტყობინება1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "შეტყობინება1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["kk"] =
@@ -12058,7 +12632,21 @@ Blockly.ScratchMsgs.locales["kk"] =
     "NEW_BROADCAST_MESSAGE": "Жаға хабарлама",
     "NEW_BROADCAST_MESSAGE_TITLE": "Жаңа хабарламаның атауы",
     "BROADCAST_MODAL_TITLE": "Жаңа Хабарлама",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "хабарлама1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "хабарлама1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["qu"] =
@@ -12345,7 +12933,21 @@ Blockly.ScratchMsgs.locales["qu"] =
     "NEW_BROADCAST_MESSAGE": "Musuq qillqa",
     "NEW_BROADCAST_MESSAGE_TITLE": "Musuq qillqapa sutin:",
     "BROADCAST_MODAL_TITLE": "Musuq Qillqa",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "qillqa1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "qillqa1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sw"] =
@@ -12632,7 +13234,21 @@ Blockly.ScratchMsgs.locales["sw"] =
     "NEW_BROADCAST_MESSAGE": "Ujumbe mpya",
     "NEW_BROADCAST_MESSAGE_TITLE": "Jina la ujumbe mpya:",
     "BROADCAST_MODAL_TITLE": "Ujumbe Mpya",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ujumbe1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ujumbe1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ht"] =
@@ -12919,7 +13535,21 @@ Blockly.ScratchMsgs.locales["ht"] =
     "NEW_BROADCAST_MESSAGE": "Nouvo mesaj",
     "NEW_BROADCAST_MESSAGE_TITLE": "Non nouvo mesaj la:",
     "BROADCAST_MODAL_TITLE": "Nouvo Mesaj",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaj1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaj1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ku"] =
@@ -13206,7 +13836,21 @@ Blockly.ScratchMsgs.locales["ku"] =
     "NEW_BROADCAST_MESSAGE": "Peyama nû",
     "NEW_BROADCAST_MESSAGE_TITLE": "Navê peyama nû:",
     "BROADCAST_MODAL_TITLE": "Peyama Nû",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "peyam1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "peyam1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ckb"] =
@@ -13493,7 +14137,21 @@ Blockly.ScratchMsgs.locales["ckb"] =
     "NEW_BROADCAST_MESSAGE": "پەیامی نوێ",
     "NEW_BROADCAST_MESSAGE_TITLE": "ناوی نامەی نوێی",
     "BROADCAST_MODAL_TITLE": "پەیامی نوێ",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "نامەی1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "نامەی1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["lv"] =
@@ -13780,7 +14438,21 @@ Blockly.ScratchMsgs.locales["lv"] =
     "NEW_BROADCAST_MESSAGE": "Jauna ziņa",
     "NEW_BROADCAST_MESSAGE_TITLE": "Jauns ziņas nosaukums:",
     "BROADCAST_MODAL_TITLE": "Jauna ziņa",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ziņa1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ziņa1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["lt"] =
@@ -14067,7 +14739,21 @@ Blockly.ScratchMsgs.locales["lt"] =
     "NEW_BROADCAST_MESSAGE": "Nauja žinutė",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nauja žinutė pavadinimu:",
     "BROADCAST_MODAL_TITLE": "Nauja žinutė",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "žinutė1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "žinutė1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hu"] =
@@ -14354,7 +15040,21 @@ Blockly.ScratchMsgs.locales["hu"] =
     "NEW_BROADCAST_MESSAGE": "Új üzenet",
     "NEW_BROADCAST_MESSAGE_TITLE": "Új üzenet neve:",
     "BROADCAST_MODAL_TITLE": "Új üzenet",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "üzenet1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "üzenet1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["mi"] =
@@ -14641,7 +15341,21 @@ Blockly.ScratchMsgs.locales["mi"] =
     "NEW_BROADCAST_MESSAGE": "Karere hou",
     "NEW_BROADCAST_MESSAGE_TITLE": "Ingoa karere hou:",
     "BROADCAST_MODAL_TITLE": "Karere Hou",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "karere1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "karere1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["mn"] =
@@ -14928,7 +15642,21 @@ Blockly.ScratchMsgs.locales["mn"] =
     "NEW_BROADCAST_MESSAGE": "Шинэ мэссэж",
     "NEW_BROADCAST_MESSAGE_TITLE": "Шинэ мэссэжийн нэр:",
     "BROADCAST_MODAL_TITLE": "Шинэ мэссэж",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "мэссэж1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "мэссэж1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["nl"] =
@@ -15215,7 +15943,21 @@ Blockly.ScratchMsgs.locales["nl"] =
     "NEW_BROADCAST_MESSAGE": "Nieuw bericht",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nieuwe berichtnaam:",
     "BROADCAST_MODAL_TITLE": "Nieuw bericht",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "bericht1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "bericht1",
+    "ADD_FRAME": "Kader toevoegen",
+    "RENAME_FRAME": "Kader hernoemen",
+    "DELETE_FRAME": "Kader verwijderen",
+    "COLLAPSE_FRAME": "Kader samenvouwen",
+    "EXPAND_FRAME": "Kader uitvouwen",
+    "FRAME_DEFAULT_TITLE": "Kader",
+    "CHANGE_FRAME_COLOUR": "Kleur van kader wijzigen",
+    "DUPLICATE_X_BLOCKS": "%1 blokken dupliceren",
+    "LOCK_FRAME": "Kader vergrendelen",
+    "UNLOCK_FRAME": "Kader ontgrendelen",
+    "CREATE_FRAME_FROM_SELECTION": "Kader maken van selectie",
+    "CLEAN_UP_FRAME": "Blokken in kader ordenen",
+    "FIT_FRAME_TO_CONTENT": "Aanpassen aan inhoud",
+    "DELETE_FRAME_BLOCKS": "Blokken in kader verwijderen"
 };
 
 Blockly.ScratchMsgs.locales["ja"] =
@@ -15502,7 +16244,21 @@ Blockly.ScratchMsgs.locales["ja"] =
     "NEW_BROADCAST_MESSAGE": "新しいメッセージ",
     "NEW_BROADCAST_MESSAGE_TITLE": "新しいメッセージ名:",
     "BROADCAST_MODAL_TITLE": "新しいメッセージ",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "メッセージ1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "メッセージ1",
+    "ADD_FRAME": "フレームを追加",
+    "RENAME_FRAME": "フレームの名前を変更",
+    "DELETE_FRAME": "フレームを削除",
+    "COLLAPSE_FRAME": "フレームを折りたたむ",
+    "EXPAND_FRAME": "フレームを展開",
+    "FRAME_DEFAULT_TITLE": "フレーム",
+    "CHANGE_FRAME_COLOUR": "フレームの色を変更",
+    "DUPLICATE_X_BLOCKS": "%1 個のブロックを複製",
+    "LOCK_FRAME": "フレームをロック",
+    "UNLOCK_FRAME": "ロックを解除",
+    "CREATE_FRAME_FROM_SELECTION": "選択範囲をフレームにする",
+    "CLEAN_UP_FRAME": "フレーム内のブロックを整理",
+    "FIT_FRAME_TO_CONTENT": "内容に合わせる",
+    "DELETE_FRAME_BLOCKS": "中のブロックを削除"
 };
 
 Blockly.ScratchMsgs.locales["ja-Hira"] =
@@ -15789,7 +16545,21 @@ Blockly.ScratchMsgs.locales["ja-Hira"] =
     "NEW_BROADCAST_MESSAGE": "あたらしいメッセージ",
     "NEW_BROADCAST_MESSAGE_TITLE": "あたらしいメッセージめい:",
     "BROADCAST_MODAL_TITLE": "あたらしいメッセージ",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "メッセージ1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "メッセージ1",
+    "ADD_FRAME": "ふれーむをついか",
+    "RENAME_FRAME": "ふれーむのなまえをへんこう",
+    "DELETE_FRAME": "ふれーむをさくじょ",
+    "COLLAPSE_FRAME": "ふれーむをおりたたむ",
+    "EXPAND_FRAME": "ふれーむをてんかい",
+    "FRAME_DEFAULT_TITLE": "ふれーむ",
+    "CHANGE_FRAME_COLOUR": "ふれーむのいろをへんこう",
+    "DUPLICATE_X_BLOCKS": "%1 こぶろっくをふくせい",
+    "LOCK_FRAME": "ふれーむをろっく",
+    "UNLOCK_FRAME": "ろっくをかいじょ",
+    "CREATE_FRAME_FROM_SELECTION": "せんたくはんいをふれーむにする",
+    "CLEAN_UP_FRAME": "ふれーむないのぶろっくをせいり",
+    "FIT_FRAME_TO_CONTENT": "ないようにあわせる",
+    "DELETE_FRAME_BLOCKS": "なかのぶろっくをさくじょ"
 };
 
 Blockly.ScratchMsgs.locales["nb"] =
@@ -16076,7 +16846,21 @@ Blockly.ScratchMsgs.locales["nb"] =
     "NEW_BROADCAST_MESSAGE": "Ny melding",
     "NEW_BROADCAST_MESSAGE_TITLE": "Skriv ny  melding:",
     "BROADCAST_MODAL_TITLE": "Ny melding",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "melding1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "melding1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["nn"] =
@@ -16363,7 +17147,21 @@ Blockly.ScratchMsgs.locales["nn"] =
     "NEW_BROADCAST_MESSAGE": "Ny melding",
     "NEW_BROADCAST_MESSAGE_TITLE": "Namn på ny melding:",
     "BROADCAST_MODAL_TITLE": "Ny melding",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "melding1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "melding1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["oc"] =
@@ -16650,7 +17448,21 @@ Blockly.ScratchMsgs.locales["oc"] =
     "NEW_BROADCAST_MESSAGE": "Messatge novèl",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nom del messatge novèl",
     "BROADCAST_MODAL_TITLE": "Messatge novèl",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "messatge1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "messatge1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["or"] =
@@ -16937,7 +17749,21 @@ Blockly.ScratchMsgs.locales["or"] =
     "NEW_BROADCAST_MESSAGE": "ନୂଆ ସନ୍ଦେଶ",
     "NEW_BROADCAST_MESSAGE_TITLE": "ନୂଆ ସନ୍ଦେଶ ର ନାମ:",
     "BROADCAST_MODAL_TITLE": "ନୂଆ ସନ୍ଦେଶ",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ସନ୍ଦେଶ 1 "
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ସନ୍ଦେଶ 1 ",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["uz"] =
@@ -17224,7 +18050,21 @@ Blockly.ScratchMsgs.locales["uz"] =
     "NEW_BROADCAST_MESSAGE": "Yangi xabar",
     "NEW_BROADCAST_MESSAGE_TITLE": "Yangi xabar nomi:",
     "BROADCAST_MODAL_TITLE": "Yangi xabar",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "xabar1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "xabar1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["th"] =
@@ -17511,7 +18351,21 @@ Blockly.ScratchMsgs.locales["th"] =
     "NEW_BROADCAST_MESSAGE": "ข้อความใหม่",
     "NEW_BROADCAST_MESSAGE_TITLE": "ชื่อข้อความใหม่:",
     "BROADCAST_MODAL_TITLE": "ข้อความใหม่",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ข้อความ1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ข้อความ1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["km"] =
@@ -17798,7 +18652,21 @@ Blockly.ScratchMsgs.locales["km"] =
     "NEW_BROADCAST_MESSAGE": "សារថ្មី",
     "NEW_BROADCAST_MESSAGE_TITLE": "ឈ្មោះសារថ្មី៖",
     "BROADCAST_MODAL_TITLE": "សារថ្មី",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "សារ 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "សារ 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["pl"] =
@@ -18085,7 +18953,21 @@ Blockly.ScratchMsgs.locales["pl"] =
     "NEW_BROADCAST_MESSAGE": "Nowa wiadomość",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nowa nazwa wiadomości:",
     "BROADCAST_MODAL_TITLE": "Nowa wiadomość",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "wiadomość1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "wiadomość1",
+    "ADD_FRAME": "Dodaj ramkę",
+    "RENAME_FRAME": "Zmień nazwę ramki",
+    "DELETE_FRAME": "Usuń ramkę",
+    "COLLAPSE_FRAME": "Zwiń ramkę",
+    "EXPAND_FRAME": "Rozwiń ramkę",
+    "FRAME_DEFAULT_TITLE": "Ramka",
+    "CHANGE_FRAME_COLOUR": "Zmień kolor ramki",
+    "DUPLICATE_X_BLOCKS": "Powiel %1 bloków",
+    "LOCK_FRAME": "Zablokuj ramkę",
+    "UNLOCK_FRAME": "Odblokuj ramkę",
+    "CREATE_FRAME_FROM_SELECTION": "Utwórz ramkę z zaznaczenia",
+    "CLEAN_UP_FRAME": "Uporządkuj bloki w ramce",
+    "FIT_FRAME_TO_CONTENT": "Dopasuj do zawartości",
+    "DELETE_FRAME_BLOCKS": "Usuń bloki w ramce"
 };
 
 Blockly.ScratchMsgs.locales["pt"] =
@@ -18372,7 +19254,21 @@ Blockly.ScratchMsgs.locales["pt"] =
     "NEW_BROADCAST_MESSAGE": "Nova mensagem",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nome da nova mensagem:",
     "BROADCAST_MODAL_TITLE": "Nova Mensagem",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "Mensagem 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "Mensagem 1",
+    "ADD_FRAME": "Adicionar quadro",
+    "RENAME_FRAME": "Renomear quadro",
+    "DELETE_FRAME": "Excluir quadro",
+    "COLLAPSE_FRAME": "Recolher quadro",
+    "EXPAND_FRAME": "Expandir quadro",
+    "FRAME_DEFAULT_TITLE": "Quadro",
+    "CHANGE_FRAME_COLOUR": "Alterar a cor do quadro",
+    "DUPLICATE_X_BLOCKS": "Duplicar %1 blocos",
+    "LOCK_FRAME": "Bloquear quadro",
+    "UNLOCK_FRAME": "Desbloquear quadro",
+    "CREATE_FRAME_FROM_SELECTION": "Criar quadro a partir da seleção",
+    "CLEAN_UP_FRAME": "Organizar blocos do quadro",
+    "FIT_FRAME_TO_CONTENT": "Ajustar ao conteúdo",
+    "DELETE_FRAME_BLOCKS": "Excluir blocos do quadro"
 };
 
 Blockly.ScratchMsgs.locales["pt-br"] =
@@ -18659,7 +19555,21 @@ Blockly.ScratchMsgs.locales["pt-br"] =
     "NEW_BROADCAST_MESSAGE": "Nova mensagem",
     "NEW_BROADCAST_MESSAGE_TITLE": "Novo nome de mensagem:",
     "BROADCAST_MODAL_TITLE": "Nova Mensagem",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensagem 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mensagem 1",
+    "ADD_FRAME": "Adicionar quadro",
+    "RENAME_FRAME": "Renomear quadro",
+    "DELETE_FRAME": "Excluir quadro",
+    "COLLAPSE_FRAME": "Recolher quadro",
+    "EXPAND_FRAME": "Expandir quadro",
+    "FRAME_DEFAULT_TITLE": "Quadro",
+    "CHANGE_FRAME_COLOUR": "Alterar a cor do quadro",
+    "DUPLICATE_X_BLOCKS": "Duplicar %1 blocos",
+    "LOCK_FRAME": "Bloquear quadro",
+    "UNLOCK_FRAME": "Desbloquear quadro",
+    "CREATE_FRAME_FROM_SELECTION": "Criar quadro a partir da seleção",
+    "CLEAN_UP_FRAME": "Organizar blocos do quadro",
+    "FIT_FRAME_TO_CONTENT": "Ajustar ao conteúdo",
+    "DELETE_FRAME_BLOCKS": "Excluir blocos do quadro"
 };
 
 Blockly.ScratchMsgs.locales["rap"] =
@@ -18946,7 +19856,21 @@ Blockly.ScratchMsgs.locales["rap"] =
     "NEW_BROADCAST_MESSAGE": "parau apī",
     "NEW_BROADCAST_MESSAGE_TITLE": "iŋoa o te papaʾi:",
     "BROADCAST_MODAL_TITLE": "parau apī",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "ki hāŋa1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "ki hāŋa1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ro"] =
@@ -19233,7 +20157,21 @@ Blockly.ScratchMsgs.locales["ro"] =
     "NEW_BROADCAST_MESSAGE": "Mesaj nou",
     "NEW_BROADCAST_MESSAGE_TITLE": "Numele mesajului",
     "BROADCAST_MODAL_TITLE": "Mesaj nou",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaj1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "mesaj1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ru"] =
@@ -19520,7 +20458,21 @@ Blockly.ScratchMsgs.locales["ru"] =
     "NEW_BROADCAST_MESSAGE": "Новое сообщение",
     "NEW_BROADCAST_MESSAGE_TITLE": "Новое имя сообщения:",
     "BROADCAST_MODAL_TITLE": "Новое сообщение",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "сообщение1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "сообщение1",
+    "ADD_FRAME": "Добавить рамку",
+    "RENAME_FRAME": "Переименовать рамку",
+    "DELETE_FRAME": "Удалить рамку",
+    "COLLAPSE_FRAME": "Свернуть рамку",
+    "EXPAND_FRAME": "Развернуть рамку",
+    "FRAME_DEFAULT_TITLE": "Рамка",
+    "CHANGE_FRAME_COLOUR": "Изменить цвет рамки",
+    "DUPLICATE_X_BLOCKS": "Дублировать %1 блоков",
+    "LOCK_FRAME": "Заблокировать рамку",
+    "UNLOCK_FRAME": "Разблокировать рамку",
+    "CREATE_FRAME_FROM_SELECTION": "Создать рамку из выделения",
+    "CLEAN_UP_FRAME": "Упорядочить блоки в рамке",
+    "FIT_FRAME_TO_CONTENT": "Подогнать под содержимое",
+    "DELETE_FRAME_BLOCKS": "Удалить блоки в рамке"
 };
 
 Blockly.ScratchMsgs.locales["nso"] =
@@ -19807,7 +20759,21 @@ Blockly.ScratchMsgs.locales["nso"] =
     "NEW_BROADCAST_MESSAGE": "Molaetša o moswa",
     "NEW_BROADCAST_MESSAGE_TITLE": "Leina la molaetša o moswa",
     "BROADCAST_MODAL_TITLE": "Molaetša o Moswa",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "molaetša1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "molaetša1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["tn"] =
@@ -20094,7 +21060,21 @@ Blockly.ScratchMsgs.locales["tn"] =
     "NEW_BROADCAST_MESSAGE": "Molaetsa o montšhwa",
     "NEW_BROADCAST_MESSAGE_TITLE": "Leina la molaetsa o montšhwa:",
     "BROADCAST_MODAL_TITLE": "Molaetsa o montšhwa",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "molaetsa 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "molaetsa 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sk"] =
@@ -20381,7 +21361,21 @@ Blockly.ScratchMsgs.locales["sk"] =
     "NEW_BROADCAST_MESSAGE": "nová správa...",
     "NEW_BROADCAST_MESSAGE_TITLE": "Meno novej správy:",
     "BROADCAST_MODAL_TITLE": "Nová správa",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "správa1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "správa1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sl"] =
@@ -20668,7 +21662,21 @@ Blockly.ScratchMsgs.locales["sl"] =
     "NEW_BROADCAST_MESSAGE": "Novo sporočilo",
     "NEW_BROADCAST_MESSAGE_TITLE": "Ime novega sporočila:",
     "BROADCAST_MODAL_TITLE": "Novo sporočilo",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "sporočilo1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "sporočilo1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sr"] =
@@ -20955,7 +21963,21 @@ Blockly.ScratchMsgs.locales["sr"] =
     "NEW_BROADCAST_MESSAGE": "Нова порука",
     "NEW_BROADCAST_MESSAGE_TITLE": "Име нове поруке:",
     "BROADCAST_MODAL_TITLE": "Нова порука",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "порука1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "порука1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fi"] =
@@ -21242,7 +22264,21 @@ Blockly.ScratchMsgs.locales["fi"] =
     "NEW_BROADCAST_MESSAGE": "Uusi viesti",
     "NEW_BROADCAST_MESSAGE_TITLE": "Uuden viestin nimi:",
     "BROADCAST_MODAL_TITLE": "Uusi viesti",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "viesti1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "viesti1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sv"] =
@@ -21529,7 +22565,21 @@ Blockly.ScratchMsgs.locales["sv"] =
     "NEW_BROADCAST_MESSAGE": "Nytt meddelande",
     "NEW_BROADCAST_MESSAGE_TITLE": "Nytt namn på meddelande:",
     "BROADCAST_MODAL_TITLE": "Nytt meddelande",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "meddelande1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "meddelande1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["vi"] =
@@ -21816,7 +22866,21 @@ Blockly.ScratchMsgs.locales["vi"] =
     "NEW_BROADCAST_MESSAGE": "Thông báo mới",
     "NEW_BROADCAST_MESSAGE_TITLE": "Tên thông báo mới:",
     "BROADCAST_MODAL_TITLE": "Tin nhắn mới",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "tin nhắn 1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "tin nhắn 1",
+    "ADD_FRAME": "Add Frame",
+    "RENAME_FRAME": "Rename Frame",
+    "DELETE_FRAME": "Delete Frame",
+    "COLLAPSE_FRAME": "Collapse Frame",
+    "EXPAND_FRAME": "Expand Frame",
+    "FRAME_DEFAULT_TITLE": "Frame",
+    "CHANGE_FRAME_COLOUR": "Change Frame Color",
+    "DUPLICATE_X_BLOCKS": "Duplicate %1 Blocks",
+    "LOCK_FRAME": "Lock Frame",
+    "UNLOCK_FRAME": "Unlock Frame",
+    "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
+    "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
+    "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
+    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["tr"] =
@@ -22103,7 +23167,21 @@ Blockly.ScratchMsgs.locales["tr"] =
     "NEW_BROADCAST_MESSAGE": "Yeni haber",
     "NEW_BROADCAST_MESSAGE_TITLE": "Yeni haber adı:",
     "BROADCAST_MODAL_TITLE": "Yeni Haber",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "haber1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "haber1",
+    "ADD_FRAME": "Çerçeve ekle",
+    "RENAME_FRAME": "Çerçeveyi yeniden adlandır",
+    "DELETE_FRAME": "Çerçeveyi sil",
+    "COLLAPSE_FRAME": "Çerçeveyi daralt",
+    "EXPAND_FRAME": "Çerçeveyi genişlet",
+    "FRAME_DEFAULT_TITLE": "Çerçeve",
+    "CHANGE_FRAME_COLOUR": "Çerçeve rengini değiştir",
+    "DUPLICATE_X_BLOCKS": "%1 blok çoğalt",
+    "LOCK_FRAME": "Çerçeveyi kilitle",
+    "UNLOCK_FRAME": "Çerçeve kilidini aç",
+    "CREATE_FRAME_FROM_SELECTION": "Seçimden çerçeve oluştur",
+    "CLEAN_UP_FRAME": "Çerçevedeki blokları düzenle",
+    "FIT_FRAME_TO_CONTENT": "İçeriğe sığdır",
+    "DELETE_FRAME_BLOCKS": "Çerçevedeki blokları sil"
 };
 
 Blockly.ScratchMsgs.locales["uk"] =
@@ -22390,7 +23468,21 @@ Blockly.ScratchMsgs.locales["uk"] =
     "NEW_BROADCAST_MESSAGE": "Нове повідомлення",
     "NEW_BROADCAST_MESSAGE_TITLE": "Нове ім’я повідомлення:",
     "BROADCAST_MODAL_TITLE": "Нове повідомлення",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "повідомлення1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "повідомлення1",
+    "ADD_FRAME": "Додати рамку",
+    "RENAME_FRAME": "Перейменувати рамку",
+    "DELETE_FRAME": "Видалити рамку",
+    "COLLAPSE_FRAME": "Згорнути рамку",
+    "EXPAND_FRAME": "Розгорнути рамку",
+    "FRAME_DEFAULT_TITLE": "Рамка",
+    "CHANGE_FRAME_COLOUR": "Змінити колір рамки",
+    "DUPLICATE_X_BLOCKS": "Дублювати %1 блоків",
+    "LOCK_FRAME": "Заблокувати рамку",
+    "UNLOCK_FRAME": "Розблокувати рамку",
+    "CREATE_FRAME_FROM_SELECTION": "Створити рамку з виділення",
+    "CLEAN_UP_FRAME": "Впорядкувати блоки в рамці",
+    "FIT_FRAME_TO_CONTENT": "Підігнати під вміст",
+    "DELETE_FRAME_BLOCKS": "Видалити блоки в рамці"
 };
 
 Blockly.ScratchMsgs.locales["zh-cn"] =
@@ -22678,7 +23770,20 @@ Blockly.ScratchMsgs.locales["zh-cn"] =
     "NEW_BROADCAST_MESSAGE": "新消息",
     "NEW_BROADCAST_MESSAGE_TITLE": "新消息的名称：",
     "BROADCAST_MODAL_TITLE": "新消息",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "消息1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "消息1",
+    "ADD_FRAME": "添加代码框",
+    "RENAME_FRAME": "重命名代码框",
+    "DELETE_FRAME": "删除代码框",
+    "COLLAPSE_FRAME": "折叠代码框",
+    "EXPAND_FRAME": "展开代码框",
+    "FRAME_DEFAULT_TITLE": "代码框",
+    "CHANGE_FRAME_COLOUR": "更改代码框颜色",
+    "LOCK_FRAME": "锁定代码框",
+    "UNLOCK_FRAME": "解锁代码框",
+    "CREATE_FRAME_FROM_SELECTION": "创建为代码框",
+    "CLEAN_UP_FRAME": "整理框内积木",
+    "FIT_FRAME_TO_CONTENT": "贴合内容",
+    "DELETE_FRAME_BLOCKS": "删除内部积木"
 };
 
 Blockly.ScratchMsgs.locales["zh-tw"] =
@@ -22966,6 +24071,19 @@ Blockly.ScratchMsgs.locales["zh-tw"] =
     "NEW_BROADCAST_MESSAGE": "新的訊息",
     "NEW_BROADCAST_MESSAGE_TITLE": "新訊息的名稱",
     "BROADCAST_MODAL_TITLE": "新的訊息",
-    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1"
+    "DEFAULT_BROADCAST_MESSAGE_NAME": "message1",
+    "ADD_FRAME": "新增程式框",
+    "RENAME_FRAME": "重新命名程式框",
+    "DELETE_FRAME": "刪除程式框",
+    "COLLAPSE_FRAME": "收合程式框",
+    "EXPAND_FRAME": "展開程式框",
+    "FRAME_DEFAULT_TITLE": "程式框",
+    "CHANGE_FRAME_COLOUR": "變更程式框顏色",
+    "LOCK_FRAME": "鎖定程式框",
+    "UNLOCK_FRAME": "解鎖程式框",
+    "CREATE_FRAME_FROM_SELECTION": "建立為程式框",
+    "CLEAN_UP_FRAME": "整理框內積木",
+    "FIT_FRAME_TO_CONTENT": "貼合內容",
+    "DELETE_FRAME_BLOCKS": "刪除內部積木"
 };
 // End of combined translations
