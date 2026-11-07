@@ -221,6 +221,7 @@ Blockly.Msg["SENSING_CURRENT_SECOND"] = "second";
 Blockly.Msg["SENSING_DAYSSINCE2000"] = "days since 2000";
 Blockly.Msg["SENSING_USERNAME"] = "username";
 Blockly.Msg["SENSING_USERID"] = "user id";
+Blockly.Msg["SENSING_ONLINE"] = "online?";
 Blockly.Msg["SOUND_PLAY"] = "start sound %1";
 Blockly.Msg["SOUND_PLAYUNTILDONE"] = "play sound %1 until done";
 Blockly.Msg["SOUND_STOPALLSOUNDS"] = "stop all sounds";

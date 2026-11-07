@@ -545,8 +545,8 @@ Blockly.Blocks['sensing_userid'] = {
 Blockly.Blocks['sensing_online'] = {
   init: function() {
     this.jsonInit({
-      // TODO: we need infrastructure to translate new blockly strings
-      "message0": "online?",
+      // Fall back to English when the locale data predates SENSING_ONLINE.
+      "message0": Blockly.Msg.SENSING_ONLINE || 'online?',
       "category": Blockly.Categories.sensing,
       "checkboxInFlyout": true,
       "extensions": ["colours_sensing", "output_boolean"]

@@ -215,6 +215,7 @@
     "SENSING_DAYSSINCE2000": "days since 2000",
     "SENSING_USERNAME": "username",
     "SENSING_USERID": "user id",
+    "SENSING_ONLINE": "online?",
     "SOUND_PLAY": "start sound %1",
     "SOUND_PLAYUNTILDONE": "play sound %1 until done",
     "SOUND_STOPALLSOUNDS": "stop all sounds",
