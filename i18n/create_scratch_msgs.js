@@ -11,6 +11,18 @@ let en = fs.readFileSync(path.resolve(__dirname, '../msg/json/en.json'));
 en = JSON.parse(en);
 const enKeys = Object.keys(en).sort().toString();
 
+// New strings are not translated on Transifex right away.  Keep the generated
+// locale files in sync with en.json by falling back to the English source for
+// every key a translation is still missing.  Keys that no longer exist in
+// en.json are dropped as well.
+const fillMissingTranslations = function (json) {
+    const filled = {};
+    Object.keys(en).forEach(function (key) {
+        filled[key] = Object.prototype.hasOwnProperty.call(json, key) ? json[key] : en[key];
+    });
+    return filled;
+};
+
 // Check that translation is valid:
 // entry: array [key, translation]  corresponding to a single string from <locale>.json
 // - messages with placeholders have the same number of placeholders
@@ -56,7 +68,7 @@ files.forEach(function (uri) {
     if (name !== 'qqq' && name !== 'synonyms') {
       let body = fs.readFileSync(uri);
       // Convert file body into an object (let this throw if invalid JSON)
-      body = JSON.parse(body);
+      body = fillMissingTranslations(JSON.parse(body));
       validate(body, name);
       file += '\n';
       file += `Blockly.ScratchMsgs.locales["${name}"] =\n`;

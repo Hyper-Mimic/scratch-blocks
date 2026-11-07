@@ -38,6 +38,17 @@ let en = fs.readFileSync(path.resolve(__dirname, '../msg/json/en.json'));
 en = JSON.parse(en);
 const enKeys = Object.keys(en).sort().toString();
 
+// Transifex has no translations for newly added strings until they are
+// reviewed.  Fall back to English for those keys so validation and the
+// generated locale files stay in sync with en.json.
+const fillMissingTranslations = function (json) {
+  const filled = {};
+  Object.keys(en).forEach(function (key) {
+    filled[key] = Object.prototype.hasOwnProperty.call(json, key) ? json[key] : en[key];
+  });
+  return filled;
+};
+
 // Check that translation is valid:
 // entry: array [key, translation]  corresponding to a single string from <locale>.json
 // - messages with placeholders have the same number of placeholders
@@ -96,10 +107,11 @@ const getLocaleData = async function (locale) {
 
 Promise.all(Object.keys(locales).map(getLocaleData)).then(function (values) {
   values.forEach(function (translation) {
-    validate(translation.translations, translation.locale);
+    const messages = fillMissingTranslations(translation.translations);
+    validate(messages, translation.locale);
     file += '\n';
     file += `Blockly.ScratchMsgs.locales["${translation.locale}"] =\n`;
-    file += JSON.stringify(translation.translations, null, 4);
+    file += JSON.stringify(messages, null, 4);
     file += ';\n';
   });
   file += '// End of combined translations\n';
