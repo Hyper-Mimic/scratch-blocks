@@ -1215,7 +1215,15 @@ Blockly.Css.CONTENT = [
     'list-style: none;',
     'margin: 0;',
      /* 28px on the left for icon or checkbox; 7em on the right for shortcut. */
-    'padding: 7px 7em 7px 28px;',
+    /* Keep the 1px top/bottom borders in the resting state (transparent), so
+     * highlighting an item never changes its box. At non-100% browser zoom
+     * hairline borders are snapped to device pixels; adding/removing them on
+     * hover used to make the hovered item, and therefore the whole menu, jump
+     * in height as the pointer moved. */
+    'border-color: transparent;',
+    'border-style: dotted;',
+    'border-width: 1px 0;',
+    'padding: 6px 7em 6px 28px;',
     'white-space: nowrap;',
   '}',
 
@@ -1282,13 +1290,10 @@ Blockly.Css.CONTENT = [
   '.blocklyWidgetDiv .goog-menuitem-highlight,',
   '.blocklyWidgetDiv .goog-menuitem-hover {',
     'background-color: $colour_contextMenuActiveBackground;',
-     /* Use an explicit top and bottom border so that the selection is visible',
-      * in high contrast mode. */
+     /* The borders are always present (transparent while resting); only their
+      * colour changes here, so the item's height is identical in every state.
+      * Real borders also keep the selection visible in high contrast mode. */
     'border-color: $colour_contextMenuActiveBackground;',
-    'border-style: dotted;',
-    'border-width: 1px 0;',
-    'padding-bottom: 6px;',
-    'padding-top: 6px;',
   '}',
 
   '.blocklyDropDownDiv .goog-menuitem-highlight,',
