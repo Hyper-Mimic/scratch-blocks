@@ -158,6 +158,31 @@ Blockly.Events.COMMENT_CHANGE = 'comment_change';
 Blockly.Events.COMMENT_DELETE = 'comment_delete';
 
 /**
+ * Name of event that creates a frame.
+ * @const
+ */
+Blockly.Events.FRAME_CREATE = 'frame_create';
+
+/**
+ * Name of event that moves a frame.
+ * @const
+ */
+Blockly.Events.FRAME_MOVE = 'frame_move';
+
+/**
+ * Name of event that changes a frame's property
+ * (title, colour, size, or collapsed state).
+ * @const
+ */
+Blockly.Events.FRAME_CHANGE = 'frame_change';
+
+/**
+ * Name of event that deletes a frame.
+ * @const
+ */
+Blockly.Events.FRAME_DELETE = 'frame_delete';
+
+/**
  * Name of event that records a UI change.
  * @const
  */
@@ -379,6 +404,18 @@ Blockly.Events.fromJson = function(json, workspace) {
       break;
     case Blockly.Events.COMMENT_DELETE:
       event = new Blockly.Events.CommentDelete(null);
+      break;
+    case Blockly.Events.FRAME_CREATE:
+      event = new Blockly.Events.FrameCreate(null);
+      break;
+    case Blockly.Events.FRAME_CHANGE:
+      event = new Blockly.Events.FrameChange(null);
+      break;
+    case Blockly.Events.FRAME_MOVE:
+      event = new Blockly.Events.FrameMove(null);
+      break;
+    case Blockly.Events.FRAME_DELETE:
+      event = new Blockly.Events.FrameDelete(null);
       break;
     case Blockly.Events.UI:
       event = new Blockly.Events.Ui(null);

@@ -67,6 +67,16 @@ Blockly.Workspace = function(opt_options) {
    */
   this.commentDB_ = Object.create(null);
   /**
+   * @type {!Array.<!Blockly.Frame>}
+   * @private
+   */
+  this.topFrames_ = [];
+  /**
+   * @type {!Object}
+   * @private
+   */
+  this.frameDB_ = Object.create(null);
+  /**
    * @type {!Array.<!Function>}
    * @private
    */
@@ -260,6 +270,51 @@ Blockly.Workspace.prototype.getTopComments = function(ordered) {
 };
 
 /**
+ * Add a frame to the list of top frames.
+ * @param {!Blockly.Frame} frame Frame to add.
+ * @package
+ */
+Blockly.Workspace.prototype.addTopFrame = function(frame) {
+  this.topFrames_.push(frame);
+  if (this.frameDB_[frame.id]) {
+    console.warn('Overriding an existing frame on this workspace, with id "' +
+        frame.id + '"');
+  }
+  this.frameDB_[frame.id] = frame;
+};
+
+/**
+ * Remove a frame from the list of top frames.
+ * @param {!Blockly.Frame} frame Frame to remove.
+ * @package
+ */
+Blockly.Workspace.prototype.removeTopFrame = function(frame) {
+  if (!goog.array.remove(this.topFrames_, frame)) {
+    throw 'Frame not present in workspace\'s list of top-most frames.';
+  }
+  delete this.frameDB_[frame.id];
+};
+
+/**
+ * Finds the top-level frames and returns them.
+ * @return {!Array.<!Blockly.Frame>} The top-level frame objects.
+ * @package
+ */
+Blockly.Workspace.prototype.getTopFrames = function() {
+  return [].concat(this.topFrames_);
+};
+
+/**
+ * Find the frame on this workspace with the specified ID.
+ * @param {string} id ID of frame to find.
+ * @return {Blockly.Frame} The sought after frame or null if not found.
+ * @package
+ */
+Blockly.Workspace.prototype.getFrameById = function(id) {
+  return this.frameDB_[id] || null;
+};
+
+/**
  * Find all blocks in workspace.  Blocks are optionally sorted
  * by position; top to bottom (with slight LTR or RTL bias).
  * @param {boolean} ordered Sort the list if true.
@@ -302,6 +357,9 @@ Blockly.Workspace.prototype.clear = function() {
   }
   while (this.topComments_.length) {
     this.topComments_[this.topComments_.length - 1].dispose();
+  }
+  while (this.topFrames_.length) {
+    this.topFrames_[this.topFrames_.length - 1].dispose();
   }
   if (!existingGroup) {
     Blockly.Events.setGroup(false);
