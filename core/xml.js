@@ -946,7 +946,15 @@ Blockly.Xml.restoreFrameVisibility_ = function(workspace, block) {
     return;
   }
   for (var i = 0; i < frames.length; i++) {
-    if (frames[i].isCollapsed() && frames[i].getBlockIds().indexOf(block.id) !== -1) {
+    var frame = frames[i];
+    if (!frame.isCollapsed()) {
+      continue;
+    }
+    // PATCH 26 (2026-11-07): this runs for every stack the culling pass shows
+    // again; a linear scan of the frame's swallowed ids made it quadratic.
+    var owned = frame.hasBlockId_ ? frame.hasBlockId_(block.id) :
+        frame.getBlockIds().indexOf(block.id) !== -1;
+    if (owned) {
       var root = block.getSvgRoot();
       if (root) {
         root.style.display = 'none';

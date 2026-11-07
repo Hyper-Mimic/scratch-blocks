@@ -86,6 +86,8 @@ Blockly.Frame = function(workspace, opt_options) {
    * @private
    */
   this.blockIds_ = options.blockIds || [];
+  /** @type {?Set<string>} PATCH 26: lazy O(1) index over blockIds_. @private */
+  this.blockIdSet_ = null;
 
   this.width_ = Math.max(options.width || Blockly.Frame.DEFAULT_WIDTH,
       Blockly.Frame.MIN_WIDTH);
@@ -688,6 +690,22 @@ Blockly.Frame.prototype.getBlockIds = function() {
 };
 
 /**
+ * PATCH 26 (2026-11-07): O(1) membership test for a collapsed frame's ids.
+ * Xml.restoreFrameVisibility_ calls this for every stack that becomes visible;
+ * a linear indexOf made restoring a large workspace quadratic. The Set is
+ * rebuilt lazily and only invalidated when blockIds_ is replaced.
+ * @param {string} id Block id.
+ * @return {boolean} Whether this frame swallowed that block.
+ * @package
+ */
+Blockly.Frame.prototype.hasBlockId_ = function(id) {
+  if (!this.blockIdSet_) {
+    this.blockIdSet_ = new Set(this.blockIds_);
+  }
+  return this.blockIdSet_.has(id);
+};
+
+/**
  * @return {number} The frame's width when expanded.
  * @package
  */
@@ -1042,12 +1060,14 @@ Blockly.Frame.prototype.pathMouseDown_ = function(e) {
  * recorded when it collapsed, because collapsing moved other scripts up into
  * the frame's footprint and made the positions unreliable. Otherwise it is
  * worked out from the positions.
+ * @param {Object=} opt_measured PATCH 26: pre-measured top blocks, so a
+ *     collapse does not have to walk the whole workspace twice.
  * @return {!Array.<!Blockly.BlockSvg>} The blocks inside this frame.
  * @package
  */
-Blockly.Frame.prototype.getMembers = function() {
+Blockly.Frame.prototype.getMembers = function(opt_measured) {
   if (!this.collapsed_) {
-    return this.getContainedBlocks();
+    return this.getContainedBlocks(opt_measured);
   }
   var blocks = [];
   for (var i = 0; i < this.blockIds_.length; i++) {
@@ -1183,9 +1203,10 @@ Blockly.Frame.prototype.setMembersVisible_ = function(visible) {
 };
 
 /**
- * Collapse or expand the frame. Collapsing hides the scripts inside it and
- * pulls everything below the frame up into the space it freed, which is the
- * whole point of collapsing it.
+ * Collapse or expand the frame. PATCH 27 (2026-11-07): collapsing only hides
+ * the scripts inside the frame. It no longer shifts anything below it -- the
+ * workspace keeps every other block exactly where it was, at the cost of the
+ * empty space the collapsed frame leaves behind.
  * @param {boolean} collapsed Whether the frame should be collapsed.
  * @package
  */
@@ -1193,9 +1214,16 @@ Blockly.Frame.prototype.setCollapsed = function(collapsed) {
   if (this.collapsed_ == collapsed) {
     return;
   }
-  this.materializeForEdit_(true);
+  // Nothing below the frame moves now, so only the frame's own scripts have to
+  // be materialised for this edit.
+  this.materializeForEdit_(false);
+  // PATCH 26 (2026-11-07): measure the top blocks once for getMembers instead
+  // of letting it (and the old shift pass) each walk the whole workspace with
+  // getBoundingRectangle(), which recursively visits every next-chain block.
+  var measured = this.collapsed_ ? null :
+      Blockly.Frame.measureTopBlocks_(this.workspace);
   // Read the members before the collapsed flag changes which list is in use.
-  var members = this.getMembers();
+  var members = this.getMembers(measured);
   var oldIds = this.blockIds_;
   var newIds = [];
   if (collapsed) {
@@ -1208,11 +1236,11 @@ Blockly.Frame.prototype.setCollapsed = function(collapsed) {
       {collapsed: this.collapsed_, blockIds: oldIds},
       {collapsed: collapsed, blockIds: newIds}));
 
-  var delta = this.height_ - Blockly.Frame.TOP_BAR_HEIGHT;
-
   this.collapsed_ = collapsed;
   this.blockIds_ = newIds;
-  this.shiftContentBelow_(members, collapsed ? -delta : delta);
+  this.blockIdSet_ = null;
+  // PATCH 27: deliberately no shiftContentBelow_ call. The frame shrinks to
+  // its title bar, but every other block keeps its workspace coordinates.
 
   for (var j = 0; j < members.length; j++) {
     var root = members[j].getSvgRoot();
@@ -1230,7 +1258,9 @@ Blockly.Frame.prototype.setCollapsed = function(collapsed) {
 
 /**
  * Load scripts affected by a frame edit, leaving unrelated scripts unloaded.
- * @param {boolean} includeBelow Include scripts shifted by collapsing a frame.
+ * @param {boolean} includeBelow Also materialise scripts below the frame.
+ *     PATCH 27: collapsing no longer shifts those, so setCollapsed passes
+ *     false; kept for frame drags and any future space-reclaiming mode.
  * @private
  */
 Blockly.Frame.prototype.materializeForEdit_ = function(includeBelow) {
@@ -1239,8 +1269,11 @@ Blockly.Frame.prototype.materializeForEdit_ = function(includeBelow) {
   var frame = this;
   var threshold = this.xy_.y + (this.collapsed_ ? Blockly.Frame.TOP_BAR_HEIGHT : this.height_);
   var ids = workspace.getTopBlocks(false).map(function(block) { return block.id; });
+  // PATCH 26: build the id index once instead of a linear search per deferred
+  // script (a large project can have thousands of both).
+  var memberIds = frame.collapsed_ ? new Set(frame.blockIds_) : null;
   workspace.getDeferredScripts().forEach(function(script) {
-    var member = frame.collapsed_ ? frame.blockIds_.indexOf(script.id) !== -1 :
+    var member = memberIds ? memberIds.has(script.id) :
         frame.containsPoint(script);
     if (member || (includeBelow && script.y >= threshold)) ids.push(script.id);
   });
@@ -1249,13 +1282,20 @@ Blockly.Frame.prototype.materializeForEdit_ = function(includeBelow) {
 
 /**
  * Move everything sitting below the frame up or down, so that collapsing the
- * frame actually reclaims the space it was taking up. The frame's own blocks
- * are left where they are: they get hidden instead.
+ * frame reclaims the space it was taking up. The frame's own blocks are left
+ * where they are: they get hidden instead.
+ *
+ * PATCH 27 (2026-11-07): setCollapsed no longer calls this -- collapsing must
+ * not change any other block's position. The method stays (with its PATCH 26
+ * optimisations) so the space-reclaiming behaviour can be restored without
+ * reintroducing the quadratic scan.
  * @param {!Array.<!Blockly.BlockSvg>} members The blocks inside this frame.
  * @param {number} dy How far to move things, in workspace units.
+ * @param {Object=} opt_measured PATCH 26: shared top-block measurement.
  * @private
  */
-Blockly.Frame.prototype.shiftContentBelow_ = function(members, dy) {
+Blockly.Frame.prototype.shiftContentBelow_ = function(members, dy,
+    opt_measured) {
   if (!dy) {
     return;
   }
@@ -1263,13 +1303,18 @@ Blockly.Frame.prototype.shiftContentBelow_ = function(members, dy) {
   var threshold = this.xy_.y +
       (dy < 0 ? this.height_ : Blockly.Frame.TOP_BAR_HEIGHT);
 
-  var blocks = this.workspace.getTopBlocks(false);
-  for (var i = 0; i < blocks.length; i++) {
-    var block = blocks[i];
-    if (members.indexOf(block) != -1) {
+  // PATCH 26 (2026-11-07): reuse the measurement taken in setCollapsed and
+  // replace the per-block linear indexOf with an O(1) set lookup. On a large
+  // project this loop alone was O(topBlocks x members).
+  var measured = opt_measured ||
+      Blockly.Frame.measureTopBlocks_(this.workspace);
+  var memberSet = new Set(members);
+  for (var i = 0; i < measured.blocks.length; i++) {
+    var block = measured.blocks[i];
+    if (memberSet.has(block)) {
       continue;
     }
-    if (block.getBoundingRectangle().topLeft.y >= threshold) {
+    if (measured.boxes[i].topLeft.y >= threshold) {
       block.moveBy(0, dy);
     }
   }
