@@ -278,6 +278,15 @@ Blockly.WorkspaceSvg.prototype.currentGesture_ = null;
 Blockly.WorkspaceSvg.prototype.blockDragSurface_ = null;
 
 /**
+ * The box-select follower layer (a <g> inside a sibling SVG) while a box drag
+ * is active. Published so BlockSvg.getRelativeToSurfaceXY() can stop its DOM
+ * walk there instead of continuing into the HTML document.
+ * @type {?Element}
+ * @private
+ */
+Blockly.WorkspaceSvg.prototype.boxDragFollowerLayer_ = null;
+
+/**
  * This workspace's drag surface, if it exists.
  * @type {Blockly.WorkspaceDragSurfaceSvg}
  * @private

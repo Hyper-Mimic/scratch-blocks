@@ -439,6 +439,16 @@ Blockly.Connection.prototype.isConnectionAllowed = function(candidate) {
     return false;
   }
 
+  // Never snap a dragged stack onto one of its own connections. The
+  // draggingConnections_ exclusion list is normally enough, but a box drag
+  // clears it (followers call setDragging(false)) before the final snap
+  // search. Connecting a stack to itself either throws "Attempted to connect
+  // a block to itself" or builds a parent cycle that hangs getRootBlock().
+  if (this.sourceBlock_.getRootBlock() ===
+      candidate.getSourceBlock().getRootBlock()) {
+    return false;
+  }
+
   // Type checking.
   var canConnect = this.canConnectWithReason_(candidate);
   if (canConnect != Blockly.Connection.CAN_CONNECT) {

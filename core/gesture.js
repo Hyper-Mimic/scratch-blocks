@@ -352,6 +352,9 @@ Blockly.Gesture = function(e, creatorWorkspace) {
 Blockly.Gesture.prototype.dispose = function() {
   Blockly.Touch.clearTouchIdentifier();
   Blockly.Tooltip.unblock();
+  var ws = this.startWorkspace_;
+  var wasDragging = this.isBoxDragging_ || this.isDraggingBlock_ ||
+      !!this.blockDragger_;
   // Clear the owner's reference to this gesture.
   this.creatorWorkspace_.clearGesture();
 
@@ -397,6 +400,20 @@ Blockly.Gesture.prototype.dispose = function() {
   this.teardownBoxDragFollowerLayer_();
   this.boxDragFollowerRoots_ = null;
   this.boxDragFollowerStarts_ = null;
+  this.boxDragDraggingConnections_ = null;
+  this.boxDragUpdating_ = false;
+  // A drag that was interrupted before its finish handler ran must not leave
+  // resizes disabled, the event group open, or stale connections in the
+  // global exclusion list. All three make the next drag misbehave.
+  if (wasDragging) {
+    Blockly.draggingConnections_ = [];
+    if (ws) {
+      ws.setResizesEnabled(true);
+    }
+    if (Blockly.Events.getGroup()) {
+      Blockly.Events.setGroup(false);
+    }
+  }
 };
 
 /**
@@ -992,6 +1009,9 @@ Blockly.Gesture.prototype.endBoxSelect_ = function() {
 Blockly.Gesture.prototype.startBoxDrag_ = function() {
   var ws = this.startWorkspace_;
   var self = this;
+  // Keep the workspace reference for teardown even after dispose() nulls
+  // startWorkspace_; otherwise boxDragActiveBlocks_ would stay set forever.
+  this.boxDragWorkspace_ = ws;
   if (!Blockly.Events.getGroup()) {
     Blockly.Events.setGroup(true);
   }
@@ -1008,8 +1028,10 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
   // Walking up to the selected root also means dragging any block of a fully
   // selected stack moves the whole stack, which is the intuitive behaviour.
   var main = this.targetBlock_;
-  while (main.getParent() &&
+  var walked = new Set();
+  while (main.getParent() && !walked.has(main) &&
          this.startWorkspace_.isBlockBoxSelected(main.getParent())) {
+    walked.add(main);
     main = main.getParent();
   }
   if (!main.isMovable() || !main.getSvgRoot()) {
@@ -1094,6 +1116,12 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
   this.boxDragFollowerLayer_ = Blockly.utils.createSvgElement('g', {},
       this.boxDragFollowerSurface_);
   this.boxDragFollowerSurface_.style.display = 'block';
+  // BlockSvg.getRelativeToSurfaceXY() walks DOM ancestors to compute a
+  // block's workspace position. This layer lives in a sibling SVG (NOT under
+  // the workspace <svg>), so publish it as an explicit stopping point --
+  // otherwise comment icons compute anchors from coordinates that include the
+  // whole HTML ancestor chain and their bubbles drift until mouse-up.
+  ws.boxDragFollowerLayer_ = this.boxDragFollowerLayer_;
   var followerLayerTransform = ws.getCanvas().getAttribute('transform');
   if (followerLayerTransform) {
     this.boxDragFollowerLayer_.setAttribute('transform', followerLayerTransform);
@@ -1114,6 +1142,12 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
   });
 
   this.boxDragTotal_ = new goog.math.Coordinate(0, 0);
+  // setDragging(true) above added every moving block's connections to this
+  // global exclusion list. Snapshot it: endBoxDrag_ clears the followers'
+  // dragging state (setDragging(false) resets the list to []) BEFORE the
+  // BlockDragger does its final snap search, and that search must still
+  // reject connections on the moving stacks.
+  this.boxDragDraggingConnections_ = Blockly.draggingConnections_.slice();
   this.isBoxDragging_ = true;
   return true;
 };
@@ -1130,70 +1164,90 @@ Blockly.Gesture.prototype.startBoxDrag_ = function() {
  */
 Blockly.Gesture.prototype.updateBoxDrag_ = function(currentDragDeltaXY) {
   var ws = this.startWorkspace_;
-  if (this.blockDragger_) {
-    // Main stack: full BlockDragger behaviour (connection snapping, flyout delete
-    // preview).  This also translates the drag surface SVG, carrying the
-    // followers along with the main stack automatically.
-    this.blockDragger_.dragBlock(this.mostRecentEvent_, currentDragDeltaXY);
-
-    // Mirror the main block's delete preview on every follower so the whole
-    // selection reads as "about to be deleted" when over the flyout / trash.
-    var deleting = this.blockDragger_.wouldDeleteBlock_;
-    for (var f = 0; f < this.boxDragFollowerRoots_.length; f++) {
-      this.boxDragFollowerRoots_[f].setDeleteStyle(deleting);
-    }
-
-    // Followers ride along rigidly on the flyout-top layer (no blur filter, so
-    // they stay above the flyout and are never clipped).  Re-sync the layer
-    // transform with the canvas each move so a pan/zoom mid-drag keeps them
-    // aligned with the main block.
-    var total = new goog.math.Coordinate(
-        currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
-    var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
-    this.boxDragTotal_ = total;
-    var layerTransform = ws.getCanvas().getAttribute('transform');
-    if (layerTransform) {
-      this.boxDragFollowerLayer_.setAttribute('transform', layerTransform);
-    }
-    for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
-      var block = this.boxDragFollowerRoots_[i];
-      if (block.getParent()) {
-        continue;
-      }
-      var origin = this.boxDragFollowerStarts_[i];
-      block.translate(origin.x + total.x, origin.y + total.y);
-      block.moveConnections_(delta.x, delta.y);
-      ws.invalidateContentBounds_(block.getRootBlock());
-    }
-    ws.queueIntersectionCheck();
+  // A synchronous workspace listener may re-enter this gesture; never nest a
+  // frame of box-drag work, and never leave the flag set if a frame throws.
+  if (this.boxDragUpdating_) {
     return;
   }
-
-  // Legacy rigid path (forceStartBoxDrag / duplicate-drag): every block moves by
-  // the same delta, no connection snapping.
-  var total2 = new goog.math.Coordinate(
-      currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
-  var delta2 = goog.math.Coordinate.difference(total2, this.boxDragTotal_);
-  this.boxDragTotal_ = total2;
-  for (var k = 0; k < this.boxDragBlocks_.length; k++) {
-    var b = this.boxDragBlocks_[k];
-    // In this fork every block's svgGroup is nested inside its parent's group, so
-    // a nested child is positioned RELATIVE to its parent, not in absolute
-    // surface coordinates. Translating a child by its absolute surface origin
-    // therefore double-applies the parent transform and throws it off (blocks
-    // "jump" / 错位). Only top-level (parentless) blocks get their transform set;
-    // nested children ride along with the parent group, and moveConnections_
-    // below recurses into them to keep their connection DB in sync. This mirrors
-    // BlockDragger, which only translates root blocks (2026-10-17).
-    if (b.getParent()) {
-      continue;
+  this.boxDragUpdating_ = true;
+  try {
+    // A finish that threw (or a disposed gesture) may have already nulled
+    // these. Mousemove keeps arriving; bail instead of dereferencing null.
+    if (!this.isBoxDragging_ || !this.boxDragTotal_ ||
+        (!this.blockDragger_ && !this.boxDragBlocks_) ||
+        (this.blockDragger_ &&
+         (!this.boxDragFollowerRoots_ || !this.boxDragFollowerStarts_))) {
+      return;
     }
-    var origin2 = this.boxDragOrigins_[k];
-    b.translate(origin2.x + total2.x, origin2.y + total2.y);
-    b.moveConnections_(delta2.x, delta2.y);
-    ws.invalidateContentBounds_(b.getRootBlock());
+    if (this.blockDragger_) {
+      // Main stack: full BlockDragger behaviour (connection snapping, flyout
+      // delete preview). This also translates the drag surface SVG.
+      this.blockDragger_.dragBlock(this.mostRecentEvent_, currentDragDeltaXY);
+
+      // Mirror the main block's delete preview on every follower.
+      var deleting = this.blockDragger_.wouldDeleteBlock_;
+      for (var f = 0; f < this.boxDragFollowerRoots_.length; f++) {
+        this.boxDragFollowerRoots_[f].setDeleteStyle(deleting);
+      }
+
+      var total = new goog.math.Coordinate(
+          currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
+      var delta = goog.math.Coordinate.difference(total, this.boxDragTotal_);
+      this.boxDragTotal_ = total;
+      var layerTransform = ws.getCanvas().getAttribute('transform');
+      if (layerTransform) {
+        this.boxDragFollowerLayer_.setAttribute('transform', layerTransform);
+      }
+      // moveConnections_() refreshes comment icons, whose bubbles fire a
+      // CommentMove event each. Suppress the per-frame flood; the final
+      // positions are recorded by endBoxDrag_ with events enabled.
+      Blockly.Events.disable();
+      try {
+        for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
+          var block = this.boxDragFollowerRoots_[i];
+          if (block.getParent()) {
+            continue;
+          }
+          var origin = this.boxDragFollowerStarts_[i];
+          block.translate(origin.x + total.x, origin.y + total.y);
+          // Rigid move: icons shift by the same delta instead of re-walking
+          // the DOM for every icon on every frame.
+          block.moveConnections_(delta.x, delta.y, true);
+          ws.invalidateContentBounds_(block.getRootBlock());
+        }
+      } finally {
+        Blockly.Events.enable();
+      }
+      ws.queueIntersectionCheck();
+      return;
+    }
+
+    // Legacy rigid path (forceStartBoxDrag / duplicate-drag fallback).
+    var total2 = new goog.math.Coordinate(
+        currentDragDeltaXY.x / ws.scale, currentDragDeltaXY.y / ws.scale);
+    var delta2 = goog.math.Coordinate.difference(total2, this.boxDragTotal_);
+    this.boxDragTotal_ = total2;
+    Blockly.Events.disable();
+    try {
+      for (var k = 0; k < this.boxDragBlocks_.length; k++) {
+        var b = this.boxDragBlocks_[k];
+        // Nested children are positioned relative to their parent in this
+        // fork; only top-level blocks carry an absolute surface transform.
+        if (b.getParent()) {
+          continue;
+        }
+        var origin2 = this.boxDragOrigins_[k];
+        b.translate(origin2.x + total2.x, origin2.y + total2.y);
+        b.moveConnections_(delta2.x, delta2.y, true);
+        ws.invalidateContentBounds_(b.getRootBlock());
+      }
+    } finally {
+      Blockly.Events.enable();
+    }
+    ws.queueIntersectionCheck();
+  } finally {
+    this.boxDragUpdating_ = false;
   }
-  ws.queueIntersectionCheck();
 };
 
 /**
@@ -1208,9 +1262,12 @@ Blockly.Gesture.prototype.teardownBoxDragFollowerLayer_ = function() {
   }
   this.boxDragFollowerSurface_ = null;
   this.boxDragFollowerLayer_ = null;
-  if (this.startWorkspace_) {
-    this.startWorkspace_.boxDragActiveBlocks_ = null;
+  var ws = this.startWorkspace_ || this.boxDragWorkspace_;
+  if (ws) {
+    ws.boxDragActiveBlocks_ = null;
+    ws.boxDragFollowerLayer_ = null;
   }
+  this.boxDragWorkspace_ = null;
 };
 
 /**
@@ -1224,97 +1281,136 @@ Blockly.Gesture.prototype.teardownBoxDragFollowerLayer_ = function() {
 Blockly.Gesture.prototype.endBoxDrag_ = function() {
   var ws = this.startWorkspace_;
   var e = this.mostRecentEvent_;
-  if (this.blockDragger_) {
-    // If the main block would be deleted (e.g. dropped on the flyout / trash),
-    // delete the whole selection too.
-    var willDelete = this.blockDragger_.wouldDeleteBlock_;
-    var total = new goog.math.Coordinate(
-        this.currentDragDeltaXY_.x / ws.scale,
-        this.currentDragDeltaXY_.y / ws.scale);
+  var draggingConnections = (this.boxDragDraggingConnections_ || []).slice();
+  try {
+    if (this.blockDragger_) {
+      // If the main block would be deleted (e.g. dropped on the flyout / trash),
+      // delete the whole selection too.
+      var willDelete = this.blockDragger_.wouldDeleteBlock_;
+      var total = new goog.math.Coordinate(
+          this.currentDragDeltaXY_.x / ws.scale,
+          this.currentDragDeltaXY_.y / ws.scale);
 
-    // Take followers off the flyout-top layer (or finalize their canvas position)
-    // before the main BlockDragger's clearAndHide, which asserts an empty surface.
-    for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
-      var block = this.boxDragFollowerRoots_[i];
-      var start = this.boxDragFollowerStarts_[i];
-      if (willDelete) {
-        // Clear the global dragging set (added via setDragging(true) above) so it
-        // does not leak stale connections into the next drag.
+      // Take followers off the flyout-top layer (or finalize their canvas position)
+      // before the main BlockDragger's clearAndHide, which asserts an empty surface.
+      for (var i = 0; i < this.boxDragFollowerRoots_.length; i++) {
+        var block = this.boxDragFollowerRoots_[i];
+        var start = this.boxDragFollowerStarts_[i];
+        if (willDelete) {
+          // Clear the global dragging set (added via setDragging(true) above) so it
+          // does not leak stale connections into the next drag.
+          block.setDragging(false);
+          block.dispose(false, true);
+          continue;
+        }
+        // The connection DB is already current from the per-move updates above
+        // (spacebar-free incremental moveConnections_), so do NOT re-apply the full
+        // delta here or the connections would be offset twice.  Just drop the
+        // follower back onto the workspace canvas at its final position.
+        ws.getCanvas().appendChild(block.getSvgRoot());
+        block.translate(start.x + total.x, start.y + total.y);
         block.setDragging(false);
-        block.dispose(false, true);
-        continue;
+        block.render();
+        var event = new Blockly.Events.BlockMove(block);
+        event.oldCoordinate = start;
+        event.recordNew();
+        Blockly.Events.fire(event);
       }
-      // The connection DB is already current from the per-move updates above
-      // (spacebar-free incremental moveConnections_), so do NOT re-apply the full
-      // delta here or the connections would be offset twice.  Just drop the
-      // follower back onto the workspace canvas at its final position.
-      ws.getCanvas().appendChild(block.getSvgRoot());
-      block.translate(start.x + total.x, start.y + total.y);
-      block.setDragging(false);
-      block.render();
-      var event = new Blockly.Events.BlockMove(block);
-      event.oldCoordinate = start;
-      event.recordNew();
-      Blockly.Events.fire(event);
+      // Tear down the follower surface.
+      this.teardownBoxDragFollowerLayer_();
+      this.boxDragFollowerRoots_ = null;
+      this.boxDragFollowerStarts_ = null;
+
+      // Main stack: let BlockDragger finish (apply connections or delete).
+      // IMPORTANT: dispose the dragger inside a finally so its
+      // InsertionMarkerManager — the "can connect" ghost block (an empty
+      // control_repeat etc.) — is ALWAYS torn down and removed from the workspace,
+      // even if endBlockDrag throws (e.g. a drag-surface assertion, or a follower
+      // still sitting on the surface). Without this the ghost leaks as a real,
+      // persisted orphan block. The normal block-drag path reaches this via
+      // Gesture.dispose(); but here we null this.blockDragger_ ourselves, so the
+      // later Gesture.dispose() sees null and would skip it (2026-10-25).
+      try {
+        // setDragging(false) on the followers above reset this GLOBAL array
+        // to []. endBlockDrag() begins with one more dragBlock() snap search;
+        // without the exclusions it can pick a connection on the moving
+        // stacks -> self-connection or a parent cycle (hard page freeze).
+        Blockly.draggingConnections_ = draggingConnections.slice();
+
+        this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
+      } finally {
+        if (this.blockDragger_) {
+          this.blockDragger_.dispose();
+          this.blockDragger_ = null;
+        }
+        // Always release the gesture, even when finishing threw; otherwise every
+        // later mousemove re-enters updateBoxDrag_ with dead state.
+        this.isBoxDragging_ = false;
+        this.boxDragFollowerRoots_ = null;
+        this.boxDragFollowerStarts_ = null;
+      }
+
+      ws.queueIntersectionCheck();
+      return;
     }
-    // Tear down the follower surface.
+
+    // Legacy rigid path (forceStartBoxDrag / duplicate-drag).
+    if (Blockly.Events.isEnabled()) {
+      for (var m = 0; m < this.boxDragBlocks_.length; m++) {
+        var b = this.boxDragBlocks_[m];
+        // Only top-level blocks carry a meaningful workspace position; nested
+        // blocks moved with their parent (same as a single block drag's
+        // fireMoveEvent_, which reports the dragged root only).
+        if (b.getParent()) {
+          continue;
+        }
+        var ev = new Blockly.Events.BlockMove(b);
+        ev.oldCoordinate = this.boxDragOrigins_[m];
+        ev.recordNew();
+        Blockly.Events.fire(ev);
+      }
+    }
+    for (var n = 0; n < this.boxDragBlocks_.length; n++) {
+      if (!this.boxDragBlocks_[n].getParent()) {
+        ws.resizeContents(this.boxDragBlocks_[n].getRootBlock());
+      }
+    }
+    this.boxDragBlocks_ = null;
+    this.boxDragOrigins_ = null;
+    this.boxDragTotal_ = null;
+    this.isBoxDragging_ = false;
+    ws.setResizesEnabled(true);
+    if (Blockly.Events.getGroup()) {
+      Blockly.Events.setGroup(false);
+    }
+    ws.queueIntersectionCheck();
+  } catch (err) {
+    // A single bad drop must not leave this gesture alive: handleUp() would
+    // skip dispose() and every later mousemove would re-enter a dead drag.
+    console.warn('Box drag did not finish cleanly; state was cleaned up.',
+        err);
+  } finally {
     this.teardownBoxDragFollowerLayer_();
+    if (this.blockDragger_) {
+      this.blockDragger_.dispose();
+      this.blockDragger_ = null;
+    }
+    this.isBoxDragging_ = false;
     this.boxDragFollowerRoots_ = null;
     this.boxDragFollowerStarts_ = null;
-
-    // Main stack: let BlockDragger finish (apply connections or delete).
-    // IMPORTANT: dispose the dragger inside a finally so its
-    // InsertionMarkerManager — the "can connect" ghost block (an empty
-    // control_repeat etc.) — is ALWAYS torn down and removed from the workspace,
-    // even if endBlockDrag throws (e.g. a drag-surface assertion, or a follower
-    // still sitting on the surface). Without this the ghost leaks as a real,
-    // persisted orphan block. The normal block-drag path reaches this via
-    // Gesture.dispose(); but here we null this.blockDragger_ ourselves, so the
-    // later Gesture.dispose() sees null and would skip it (2026-10-25).
-    try {
-      this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
-    } finally {
-      if (this.blockDragger_) {
-        this.blockDragger_.dispose();
-        this.blockDragger_ = null;
-      }
+    this.boxDragBlocks_ = null;
+    this.boxDragOrigins_ = null;
+    this.boxDragTotal_ = null;
+    this.boxDragDraggingConnections_ = null;
+    Blockly.draggingConnections_ = [];
+    if (ws) {
+      ws.setResizesEnabled(true);
+      ws.queueIntersectionCheck();
     }
-
-    this.isBoxDragging_ = false;
-    ws.queueIntersectionCheck();
-    return;
-  }
-
-  // Legacy rigid path (forceStartBoxDrag / duplicate-drag).
-  if (Blockly.Events.isEnabled()) {
-    for (var m = 0; m < this.boxDragBlocks_.length; m++) {
-      var b = this.boxDragBlocks_[m];
-      // Only top-level blocks carry a meaningful workspace position; nested
-      // blocks moved with their parent (same as a single block drag's
-      // fireMoveEvent_, which reports the dragged root only).
-      if (b.getParent()) {
-        continue;
-      }
-      var ev = new Blockly.Events.BlockMove(b);
-      ev.oldCoordinate = this.boxDragOrigins_[m];
-      ev.recordNew();
-      Blockly.Events.fire(ev);
+    if (Blockly.Events.getGroup()) {
+      Blockly.Events.setGroup(false);
     }
   }
-  for (var n = 0; n < this.boxDragBlocks_.length; n++) {
-    if (!this.boxDragBlocks_[n].getParent()) {
-      ws.resizeContents(this.boxDragBlocks_[n].getRootBlock());
-    }
-  }
-  this.boxDragBlocks_ = null;
-  this.boxDragOrigins_ = null;
-  this.boxDragTotal_ = null;
-  this.isBoxDragging_ = false;
-  ws.setResizesEnabled(true);
-  if (Blockly.Events.getGroup()) {
-    Blockly.Events.setGroup(false);
-  }
-  ws.queueIntersectionCheck();
 };
 
 /**
@@ -1496,31 +1592,34 @@ Blockly.Gesture.prototype.handleUp = function(e) {
   // priority than workspaces.
   // The ordering within drags does not matter, because the three types of
   // dragging are exclusive.
-  if (this.isDraggingBubble_) {
-    this.bubbleDragger_.endBubbleDrag(e, this.currentDragDeltaXY_);
-  } else if (this.isDraggingBlock_) {
-    this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
-  } else if (this.isBoxSelecting_) {
-    this.endBoxSelect_();
-  } else if (this.isBoxDragging_) {
-    this.endBoxDrag_();
-  } else if (this.isDraggingWorkspace_) {
-    this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
-  } else if (this.isBubbleClick_()) {
-    // Bubbles are in front of all fields and blocks.
-    this.doBubbleClick_();
-  } else if (this.isFieldClick_()) {
-    this.doFieldClick_();
-  } else if (this.isBlockClick_()) {
-    this.doBlockClick_();
-  } else if (this.isWorkspaceClick_()) {
-    this.doWorkspaceClick_();
+  try {
+    if (this.isDraggingBubble_) {
+      this.bubbleDragger_.endBubbleDrag(e, this.currentDragDeltaXY_);
+    } else if (this.isDraggingBlock_) {
+      this.blockDragger_.endBlockDrag(e, this.currentDragDeltaXY_);
+    } else if (this.isBoxSelecting_) {
+      this.endBoxSelect_();
+    } else if (this.isBoxDragging_) {
+      this.endBoxDrag_();
+    } else if (this.isDraggingWorkspace_) {
+      this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
+    } else if (this.isBubbleClick_()) {
+      // Bubbles are in front of all fields and blocks.
+      this.doBubbleClick_();
+    } else if (this.isFieldClick_()) {
+      this.doFieldClick_();
+    } else if (this.isBlockClick_()) {
+      this.doBlockClick_();
+    } else if (this.isWorkspaceClick_()) {
+      this.doWorkspaceClick_();
+    }
+  } finally {
+    // If any handler throws, skipping dispose() used to leave isEnding_ true
+    // and the gesture installed for every later mousemove -> error storm.
+    e.preventDefault();
+    e.stopPropagation();
+    this.dispose();
   }
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  this.dispose();
 };
 
 /**
@@ -1536,20 +1635,23 @@ Blockly.Gesture.prototype.cancel = function() {
   }
   this.isEnding_ = true;
   Blockly.longStop_();
-  if (this.isDraggingBubble_) {
-    this.bubbleDragger_.endBubbleDrag(this.mostRecentEvent_,
-        this.currentDragDeltaXY_);
-  } else if (this.isDraggingBlock_) {
-    this.blockDragger_.endBlockDrag(this.mostRecentEvent_,
-        this.currentDragDeltaXY_);
-  } else if (this.isBoxSelecting_) {
-    this.endBoxSelect_();
-  } else if (this.isBoxDragging_) {
-    this.endBoxDrag_();
-  } else if (this.isDraggingWorkspace_) {
-    this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
+  try {
+    if (this.isDraggingBubble_) {
+      this.bubbleDragger_.endBubbleDrag(this.mostRecentEvent_,
+          this.currentDragDeltaXY_);
+    } else if (this.isDraggingBlock_) {
+      this.blockDragger_.endBlockDrag(this.mostRecentEvent_,
+          this.currentDragDeltaXY_);
+    } else if (this.isBoxSelecting_) {
+      this.endBoxSelect_();
+    } else if (this.isBoxDragging_) {
+      this.endBoxDrag_();
+    } else if (this.isDraggingWorkspace_) {
+      this.workspaceDragger_.endDrag(this.currentDragDeltaXY_);
+    }
+  } finally {
+    this.dispose();
   }
-  this.dispose();
 };
 
 /**

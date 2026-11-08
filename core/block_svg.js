@@ -625,18 +625,20 @@ Blockly.BlockSvg.prototype.getRelativeToSurfaceXY = function() {
 
   var element = this.getSvgRoot();
   // Walk up through this block and every parent, summing transforms, until we
-  // reach a known stopping point.  The stop is the workspace's <svg> ROOT or any
-  // direct child of it (the block canvas / getCanvas, and the box-select
-  // flyout-top follower layer): all of those carry the workspace transform, so
-  // the coordinates returned are consistent "canvas-local" workspace units for
-  // every block.  Box-select "follower" blocks are lifted onto a flyout-top
-  // layer that is a SIBLING of the canvas under the parent <svg> (not a
-  // descendant of getCanvas), so the walk must stop at that layer instead of
-  // continuing past the <svg> into the HTML DOM (document), where getRelativeXY
-  // would throw on `document.getAttribute` and break the whole drag/delete path
-  // (2026-11-01).  We still also honour the drag-surface stop.
+  // reach a known stopping point.  The stop is the workspace's <svg> ROOT, any
+  // direct child of it (the block canvas / getCanvas), the box-select flyout-top
+  // follower layer, or the block drag surface group. All of those carry the
+  // workspace transform, so the coordinates returned stay "canvas-local"
+  // workspace units for every block. The follower layer is a <g> inside a
+  // sibling SVG of the workspace <svg>, so it needs an explicit stop: without
+  // it the walk continued into the HTML DOM (document), where getRelativeXY
+  // would throw on `document.getAttribute` (2026-11-01), and comment icons on
+  // follower stacks measured a bogus anchor during a multi-stack paste/drag
+  // (2026-11-08).
+  var followerLayer = this.workspace.boxDragFollowerLayer_ || null;
   while (element && element != this.workspace.getCanvas() &&
-      element != dragSurfaceGroup && element != this.workspace.getParentSvg() &&
+      element != dragSurfaceGroup && element != followerLayer &&
+      element != this.workspace.getParentSvg() &&
       element.parentNode != this.workspace.getParentSvg()) {
     var xy = Blockly.utils.getRelativeXY(element);
     x += xy.x;
@@ -710,8 +712,34 @@ Blockly.BlockSvg.prototype.moveToDragSurface_ = function() {
   var xy = this.getRelativeToSurfaceXY();
   this.clearTransformAttributes_();
   this.workspace.blockDragSurface_.translateSurface(xy.x, xy.y);
-  // Execute the move on the top-level SVG component
-  this.workspace.blockDragSurface_.setBlocksAndShow(this.getSvgRoot());
+  // Execute the move on the top-level SVG component.
+  // Lift only the comment bubbles attached to blocks that actually travel with
+  // this drag: the dragged block paints on the flyout-top drag surface while
+  // its bubbles would otherwise stay inside the workspace SVG (below the
+  // flyout). Using getAllBlocks() here lifted EVERY comment in the workspace,
+  // so unrelated comments visibly jumped a layer on any drag.
+  // startBoxDrag_ publishes the full moving set (main stack + box-select
+  // followers) before BlockDragger.startBlockDrag() reaches this method; for a
+  // plain single-block drag the moving set is just this block's descendants.
+  var moving = this.workspace.boxDragActiveBlocks_;
+  var draggedBlocks;
+  if (moving && moving.has && moving.has(this)) {
+    draggedBlocks = [];
+    moving.forEach(function(block) {
+      draggedBlocks.push(block);
+    });
+  } else {
+    draggedBlocks = this.getDescendants(false);
+  }
+  var bubbles = [];
+  for (var i = 0; i < draggedBlocks.length; i++) {
+    var comment = draggedBlocks[i].comment;
+    if (comment && comment.bubble_ && comment.bubble_.bubbleGroup_) {
+      bubbles.push(comment.bubble_.bubbleGroup_);
+    }
+  }
+  this.workspace.blockDragSurface_.setBlocksAndShow(this.getSvgRoot(),
+      bubbles);
 };
 
 /**
@@ -1048,7 +1076,8 @@ Blockly.BlockSvg.prototype.showContextMenu_ = function(e) {
  *     units.
  * @private
  */
-Blockly.BlockSvg.prototype.moveConnections_ = function(dx, dy) {
+Blockly.BlockSvg.prototype.moveConnections_ = function(dx, dy,
+    opt_moveIconsRigidly) {
   if (!this.rendered) {
     // Rendering is required to lay out the blocks.
     // This is probably an invisible block attached to a collapsed block.
@@ -1060,12 +1089,25 @@ Blockly.BlockSvg.prototype.moveConnections_ = function(dx, dy) {
   }
   var icons = this.getIcons();
   for (i = 0; i < icons.length; i++) {
-    icons[i].computeIconLocation();
+    if (opt_moveIconsRigidly) {
+      // A rigid box drag changes no layout, so every icon anchor simply moves
+      // by the same delta. computeIconLocation() walks the whole DOM ancestor
+      // chain (getRelativeToSurfaceXY) for every icon on every mousemove:
+      // expensive on nested blocks, and wrong while stacks sit on a sibling
+      // drag surface. This matches BlockDragger.dragIcons_.
+      var iconXY = icons[i].getIconLocation();
+      if (iconXY) {
+        icons[i].setIconLocation(
+            new goog.math.Coordinate(iconXY.x + dx, iconXY.y + dy));
+      }
+    } else {
+      icons[i].computeIconLocation();
+    }
   }
 
   // Recurse through all blocks attached under this one.
   for (i = 0; i < this.childBlocks_.length; i++) {
-    this.childBlocks_[i].moveConnections_(dx, dy);
+    this.childBlocks_[i].moveConnections_(dx, dy, opt_moveIconsRigidly);
   }
 };
 
@@ -1204,6 +1246,12 @@ Blockly.BlockSvg.prototype.dispose = function(healStack, animate) {
     // Stop rerendering.
     this.rendered = false;
 
+    // The super call fires BlockDelete, which serialises this block to XML for
+    // undo. Keep the icons alive until after that: ScratchBlockComment.dispose()
+    // clears block.comment, so disposing icons first produced XML without a
+    // <comment> node and the restored block lost its comment on undo.
+    Blockly.BlockSvg.superClass_.dispose.call(this, healStack);
+
     Blockly.Events.disable();
     try {
       var icons = this.getIcons();
@@ -1213,7 +1261,6 @@ Blockly.BlockSvg.prototype.dispose = function(healStack, animate) {
     } finally {
       Blockly.Events.enable();
     }
-    Blockly.BlockSvg.superClass_.dispose.call(this, healStack);
 
     if (blockWorkspace.intersectionObserver) {
       blockWorkspace.intersectionObserver.unobserve(this);

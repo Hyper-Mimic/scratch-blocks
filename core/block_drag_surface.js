@@ -66,6 +66,23 @@ Blockly.BlockDragSurfaceSvg.prototype.SVG_ = null;
 Blockly.BlockDragSurfaceSvg.prototype.dragGroup_ = null;
 
 /**
+ * Sibling SVG holding block comment bubbles during a block drag, and the group
+ * inside it that mirrors the workspace transform.
+ * @type {Element}
+ * @private
+ */
+Blockly.BlockDragSurfaceSvg.prototype.commentSVG_ = null;
+Blockly.BlockDragSurfaceSvg.prototype.commentGroup_ = null;
+
+/** Bubble DOM nodes currently lifted, and the canvas to put them back on.
+ * @type {?Array.<!Element>}
+ * @private
+ */
+Blockly.BlockDragSurfaceSvg.prototype.commentBubbles_ = null;
+/** @type {?Element} @private */
+Blockly.BlockDragSurfaceSvg.prototype.commentBubbleCanvas_ = null;
+
+/**
  * Containing HTML element; parent of the workspace and the drag surface.
  * @type {Element}
  * @private
@@ -135,6 +152,19 @@ Blockly.BlockDragSurfaceSvg.prototype.createDom = function() {
   this.dragShadowFilterId_ = this.createDropShadowDom_(defs);
   this.dragGroup_.setAttribute(
       'filter', 'url(#' + this.dragShadowFilterId_ + ')');
+
+  // A separate SVG for comment bubbles. Inserted after the block surface so
+  // bubbles paint above the dragged block, at the same z-index. It is NOT
+  // CSS-translated with the block surface (bubbles follow via icon updates).
+  this.commentSVG_ = Blockly.utils.createSvgElement('svg',
+      {
+        'xmlns': Blockly.SVG_NS,
+        'xmlns:html': Blockly.HTML_NS,
+        'version': '1.1',
+        'class': 'blocklyCommentDragSurface'
+      }, this.container_);
+  this.commentGroup_ = Blockly.utils.createSvgElement('g', {},
+      this.commentSVG_);
 };
 
 /**
@@ -187,12 +217,45 @@ Blockly.BlockDragSurfaceSvg.prototype.createDropShadowDom_ = function(defs) {
  * @param {!Element} blocks Block or group of blocks to place on the drag
  * surface.
  */
-Blockly.BlockDragSurfaceSvg.prototype.setBlocksAndShow = function(blocks) {
+Blockly.BlockDragSurfaceSvg.prototype.setBlocksAndShow = function(blocks,
+    opt_bubbles) {
   goog.asserts.assert(
       this.dragGroup_.childNodes.length == 0, 'Already dragging a block.');
   // appendChild removes the blocks from the previous parent
   this.dragGroup_.appendChild(blocks);
   this.SVG_.style.display = 'block';
+  if (opt_bubbles && opt_bubbles.length) {
+    this.commentBubbles_ = [];
+    this.commentBubbleCanvas_ = null;
+    for (var i = 0; i < opt_bubbles.length; i++) {
+      var bubble = opt_bubbles[i];
+      if (!bubble || !bubble.parentNode) {
+        continue;
+      }
+      this.commentBubbleCanvas_ = this.commentBubbleCanvas_ ||
+          bubble.parentNode;
+      if (bubble.parentNode !== this.commentBubbleCanvas_) {
+        continue;
+      }
+      this.commentBubbles_.push(bubble);
+      this.commentGroup_.appendChild(bubble);
+    }
+    if (this.commentBubbles_.length) {
+      this.commentGroup_.setAttribute('transform',
+          this.dragGroup_.getAttribute('transform') || '');
+      this.commentSVG_.style.display = 'block';
+    } else {
+      this.commentBubbles_ = null;
+      this.commentBubbleCanvas_ = null;
+    }
+  } else {
+    // This drag carries no comment bubbles. Make sure a previous, interrupted
+    // drag cannot keep its high layer visible (which would look like unrelated
+    // comments being lifted again).
+    this.commentBubbles_ = null;
+    this.commentBubbleCanvas_ = null;
+    this.commentSVG_.style.display = 'none';
+  }
   this.surfaceXY_ = new goog.math.Coordinate(0, 0);
   // This allows blocks to be dragged outside of the blockly svg space.
   // This should be reset to hidden at the end of the block drag.
@@ -217,6 +280,12 @@ Blockly.BlockDragSurfaceSvg.prototype.translateAndScaleGroup = function(x, y, sc
   var fixedY = y.toFixed(0);
   this.dragGroup_.setAttribute('transform',
       'translate(' + fixedX + ',' + fixedY + ') scale(' + scale + ')');
+  if (this.commentGroup_) {
+    // Keep lifted bubbles in the same workspace coordinate system as the
+    // block canvas (svgBubbleCanvas_ uses this exact transform).
+    this.commentGroup_.setAttribute('transform',
+        'translate(' + fixedX + ',' + fixedY + ') scale(' + scale + ')');
+  }
 };
 
 /**
@@ -288,11 +357,33 @@ Blockly.BlockDragSurfaceSvg.prototype.getCurrentBlock = function() {
  *     being moved to a different surface.
  */
 Blockly.BlockDragSurfaceSvg.prototype.clearAndHide = function(opt_newSurface) {
-  if (opt_newSurface) {
-    // appendChild removes the node from this.dragGroup_
-    opt_newSurface.appendChild(this.getCurrentBlock());
-  } else {
-    this.dragGroup_.removeChild(this.getCurrentBlock());
+  if (this.commentBubbles_) {
+    for (var i = 0; i < this.commentBubbles_.length; i++) {
+      var bubble = this.commentBubbles_[i];
+      // A bubble disposed mid-drag is already gone; do not resurrect it.
+      if (bubble.parentNode !== this.commentGroup_) {
+        continue;
+      }
+      if (this.commentBubbleCanvas_) {
+        this.commentBubbleCanvas_.appendChild(bubble);
+      } else {
+        bubble.parentNode.removeChild(bubble);
+      }
+    }
+    this.commentBubbles_ = null;
+    this.commentBubbleCanvas_ = null;
+    this.commentSVG_.style.display = 'none';
+  }
+  // Tolerate an already-emptied drag group (e.g. a second teardown after an
+  // interrupted gesture). appendChild(null) throws and used to abort the whole
+  // box-drag finish, leaving the gesture live for every subsequent mousemove.
+  while (this.dragGroup_.firstChild) {
+    var child = this.dragGroup_.firstChild;
+    if (opt_newSurface) {
+      opt_newSurface.appendChild(child);
+    } else {
+      this.dragGroup_.removeChild(child);
+    }
   }
   this.SVG_.style.display = 'none';
   goog.asserts.assert(

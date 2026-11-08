@@ -467,7 +467,13 @@ Blockly.Block.prototype.getInputWithConnection = function(conn) {
  */
 Blockly.Block.prototype.getSurroundParent = function() {
   var block = this;
+  var seen = new Set();
   do {
+    if (seen.has(block)) {
+      // Corrupt parent cycle: stop instead of freezing the page.
+      return null;
+    }
+    seen.add(block);
     var prevBlock = block;
     block = block.getParent();
     if (!block) {
@@ -515,13 +521,23 @@ Blockly.Block.prototype.getFirstStatementConnection = function() {
  * @return {!Blockly.Block} The root block.
  */
 Blockly.Block.prototype.getRootBlock = function() {
-  var rootBlock;
   var block = this;
-  do {
-    rootBlock = block;
-    block = rootBlock.parentBlock_;
-  } while (block);
-  return rootBlock;
+  var seen = null;
+  while (block && block.parentBlock_) {
+    // A bad drag snap can connect a stack into one of its own descendants,
+    // creating a parent cycle. The old do/while then spun forever and froze
+    // the whole page. Only allocate the guard set for non-root blocks, so the
+    // common case stays as cheap as before.
+    if (!seen) {
+      seen = new Set();
+    }
+    if (seen.has(block)) {
+      break;
+    }
+    seen.add(block);
+    block = block.parentBlock_;
+  }
+  return block;
 };
 
 /**

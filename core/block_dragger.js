@@ -258,8 +258,15 @@ Blockly.BlockDragger.prototype.endBlockDrag = function(e, currentDragDeltaXY) {
     this.draggingBlock_.setDragging(false);
     this.fireMoveEvent_();
     if (this.draggedConnectionManager_.wouldConnectBlock()) {
-      // Applying connections also rerenders the relevant blocks.
-      this.draggedConnectionManager_.applyConnections();
+      // Applying connections also rerenders the relevant blocks. A rejected
+      // target must not abort the finish: that used to leave resizes disabled,
+      // the event group open and the gesture alive for every later mousemove.
+      try {
+        this.draggedConnectionManager_.applyConnections();
+      } catch (err) {
+        console.warn('Skipped an invalid drag connection.', err);
+        this.draggingBlock_.render();
+      }
     } else {
       this.draggingBlock_.render();
     }
@@ -424,9 +431,18 @@ Blockly.BlockDragger.prototype.pixelsToWorkspaceUnits_ = function(pixelCoord) {
  * @private
  */
 Blockly.BlockDragger.prototype.dragIcons_ = function(dxy) {
-  // Moving icons moves their associated bubbles.
-  for (var i = 0; i < this.dragIconData_.length; i++) {
-    var data = this.dragIconData_[i];
-    data.icon.setIconLocation(goog.math.Coordinate.sum(data.location, dxy));
+  // Moving icons moves their associated bubbles. setIconLocation() ->
+  // ScratchBubble.setAnchorLocation() fires a CommentMove event, so a drag
+  // with several pinned comments used to enqueue one event per comment per
+  // mousemove. Suppress those intermediate events; endBlockDrag records the
+  // final position once, with events enabled again.
+  Blockly.Events.disable();
+  try {
+    for (var i = 0; i < this.dragIconData_.length; i++) {
+      var data = this.dragIconData_[i];
+      data.icon.setIconLocation(goog.math.Coordinate.sum(data.location, dxy));
+    }
+  } finally {
+    Blockly.Events.enable();
   }
 };
