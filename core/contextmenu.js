@@ -59,6 +59,15 @@ Blockly.ContextMenu.currentBlock = null;
 Blockly.ContextMenu.currentOwner = null;
 
 /**
+ * Owner staged by a menu builder before calling show(). GUI addons wrap
+ * ContextMenu.show and forward only (event, items, rtl), dropping opt_owner;
+ * reading this here keeps hideIfOwner() working through those wrappers.
+ * @type {?Object}
+ * @private
+ */
+Blockly.ContextMenu.pendingOwner_ = null;
+
+/**
  * Opaque data that can be passed to unbindEvent_.
  * @type {Array.<!Array>}
  * @private
@@ -73,6 +82,8 @@ Blockly.ContextMenu.eventWrapper_ = null;
  * @param {Object=} opt_owner Comment or frame that owns this menu.
  */
 Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
+  var owner = opt_owner || Blockly.ContextMenu.pendingOwner_;
+  Blockly.ContextMenu.pendingOwner_ = null;
   Blockly.ContextMenu.currentOwner = null;
   Blockly.WidgetDiv.show(Blockly.ContextMenu, rtl, null);
   if (!options.length) {
@@ -89,16 +100,20 @@ Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
   // mouse event is still waiting in the queue and clears focus.
   setTimeout(function() {menu.getElement().focus();}, 1);
   Blockly.ContextMenu.currentBlock = null;  // May be set by Blockly.Block.
-  Blockly.ContextMenu.currentOwner = opt_owner || null;
+  Blockly.ContextMenu.currentOwner = owner || null;
 };
 
 /**
  * Make a menu option that renders as a non-interactive divider.
- * @return {!Object} A separator option.
+ * Deliberately uses `divider`, NOT `separator`: the GUI addon API already uses
+ * `separator: true` as a flag on a normal menu item ("draw a line above this
+ * item", see addons/api.js createBlockContextMenu). Reusing that key made
+ * populate_() swallow addon items and turned frame dividers into double lines.
+ * @return {!Object} A divider option.
  * @package
  */
 Blockly.ContextMenu.separator = function() {
-  return {separator: true};
+  return {divider: true};
 };
 
 /**
@@ -114,6 +129,8 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
      enabled: true,
      callback: Blockly.MakeItSo}
     A Blockly.ContextMenu.separator() option renders a divider instead.
+    Addon items carrying `separator: true` are ordinary menu items; their
+    divider is drawn by the GUI after show(), so leave them alone here.
   */
   var menu = new goog.ui.Menu();
   menu.setRightToLeft(rtl);
@@ -127,7 +144,7 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
   });
 
   for (var i = 0, option; option = options[i]; i++) {
-    if (option.separator) {
+    if (option.divider) {
       menu.addChild(new goog.ui.MenuSeparator(), true);
       continue;
     }
@@ -211,6 +228,9 @@ Blockly.ContextMenu.hide = function() {
   Blockly.WidgetDiv.hideIfOwner(Blockly.ContextMenu);
   Blockly.ContextMenu.currentBlock = null;
   Blockly.ContextMenu.currentOwner = null;
+  // A builder that staged an owner but never reached show() must not leak it
+  // into the next menu.
+  Blockly.ContextMenu.pendingOwner_ = null;
   if (Blockly.ContextMenu.eventWrapper_) {
     Blockly.unbindEvent_(Blockly.ContextMenu.eventWrapper_);
   }

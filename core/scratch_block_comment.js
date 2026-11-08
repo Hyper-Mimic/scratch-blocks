@@ -590,6 +590,7 @@ Blockly.ScratchBlockComment.prototype.isMinimized = function() {
 Blockly.ScratchBlockComment.prototype.showContextMenu_ = function(e) {
   var menuOptions = [];
   menuOptions.push(Blockly.ContextMenu.commentDeleteOption(this, Blockly.Msg.DELETE));
+  Blockly.ContextMenu.pendingOwner_ = this;
   Blockly.ContextMenu.show(e, menuOptions, this.block_.RTL, this);
 };
 

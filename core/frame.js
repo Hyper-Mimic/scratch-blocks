@@ -1558,6 +1558,7 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
         frame.setLocked(false);
       }
     });
+    Blockly.ContextMenu.pendingOwner_ = this;
     Blockly.ContextMenu.show(e, options, this.workspace.RTL, this);
     return;
   }
@@ -1645,6 +1646,7 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
     }
   });
 
+  Blockly.ContextMenu.pendingOwner_ = this;
   Blockly.ContextMenu.show(e, options, this.workspace.RTL, this);
 };
 

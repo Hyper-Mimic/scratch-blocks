@@ -202,6 +202,7 @@ Blockly.WorkspaceCommentSvg.prototype.showContextMenu_ = function(e) {
     menuOptions.push(Blockly.ContextMenu.commentDeleteOption(comment));
   }
 
+  Blockly.ContextMenu.pendingOwner_ = this;
   Blockly.ContextMenu.show(e, menuOptions, this.RTL, this);
 };
 
