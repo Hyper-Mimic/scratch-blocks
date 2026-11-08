@@ -222,6 +222,22 @@ Blockly.Css.CONTENT = [
     'z-index: 50;', /* Display above the toolbox */
   '}',
 
+  /* Block comment bubbles ride a sibling SVG at the same level as the
+     dragged block. They must not live inside the drag surface itself: that
+     SVG is CSS-translated every mousemove, which would double-move bubbles
+     whose anchors are already updated by BlockDragger.dragIcons_. */
+  '.blocklyCommentDragSurface {',
+    'display: none;',
+    'position: absolute;',
+    'top: 0;',
+    'left: 0;',
+    'right: 0;',
+    'bottom: 0;',
+    'overflow: visible !important;',
+    'pointer-events: none;',
+    'z-index: 50;',
+  '}',
+
   /* Scratch-box-select: follower blocks ride a dedicated surface while a box
      drag is active. It must be a sibling of the workspace / flyout / drag
      surface svgs: the flyout is NOT a child of the workspace svg but a
@@ -233,18 +249,6 @@ Blockly.Css.CONTENT = [
      below the block drag surface (50), so the grabbed main block still paints
      above its followers. */
   '.blocklyBoxDragFollowerSurface {',
-    'display: none;',
-    'position: absolute;',
-    'top: 0;',
-    'left: 0;',
-    'right: 0;',
-    'bottom: 0;',
-    'overflow: visible !important;',
-    'pointer-events: none;',
-    'z-index: 45;',
-  '}',
-
-  '.blocklyFrameDragSurface {',
     'display: none;',
     'position: absolute;',
     'top: 0;',
@@ -1400,6 +1404,13 @@ Blockly.Css.CONTENT = [
     'stroke: $colour_checkboxInactiveBorder;',
   '}',
 
+  /* Transitions are enabled by VerticalFlyout.createCheckbox_ one frame after
+     the checkbox is inserted. Without that delay every already-checked box in
+     a freshly opened category would animate its checkmark into place. */
+  '.blocklyFlyoutCheckboxAnim > .blocklyFlyoutCheckbox {',
+    'transition: fill .18s ease, stroke .18s ease;',
+  '}',
+
   '.checked > .blocklyFlyoutCheckbox {',
     'fill: $colour_checkboxActiveBackground;',
     'stroke: $colour_checkboxActiveBorder;',
@@ -1411,10 +1422,27 @@ Blockly.Css.CONTENT = [
     'stroke-width: 3;',
     'stroke-linecap: round;',
     'stroke-linejoin: round;',
+    /* CHECKMARK_PATH is ~17.7 units long for CHECKBOX_SIZE=25; 20 covers it
+       fully. Offsetting the dash hides the mark, so toggling draws or erases
+       the tick instead of just fading it in. */
+    'stroke-dasharray: 20;',
+    'stroke-dashoffset: 20;',
+  '}',
+
+  '.blocklyFlyoutCheckboxAnim > .blocklyFlyoutCheckboxPath {',
+    'transition: stroke-dashoffset .22s cubic-bezier(.4, 0, .2, 1), stroke .16s ease;',
   '}',
 
   '.checked > .blocklyFlyoutCheckboxPath {',
     'stroke: $colour_checkboxCheck;',
+    'stroke-dashoffset: 0;',
+  '}',
+
+  '@media (prefers-reduced-motion: reduce) {',
+    '.blocklyFlyoutCheckboxAnim > .blocklyFlyoutCheckbox,',
+    '.blocklyFlyoutCheckboxAnim > .blocklyFlyoutCheckboxPath {',
+      'transition: none;',
+    '}',
   '}',
 
   '.scratchCategoryMenu {',

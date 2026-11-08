@@ -643,6 +643,19 @@ Blockly.VerticalFlyout.prototype.createCheckbox_ = function(block, cursorX,
   block.flyoutCheckbox = checkboxObj;
   this.workspace_.getCanvas().insertBefore(checkboxGroup, svgRoot);
   this.checkboxes_[block.id] = checkboxObj;
+
+  // Enable the check/uncheck transitions only after the initial paint. A
+  // category rebuild creates its checkboxes already in their saved state;
+  // animating that first render makes every tick draw itself on each open.
+  if (window.requestAnimationFrame) {
+    window.requestAnimationFrame(function() {
+      Blockly.utils.addClass(checkboxGroup, 'blocklyFlyoutCheckboxAnim');
+    });
+  } else {
+    setTimeout(function() {
+      Blockly.utils.addClass(checkboxGroup, 'blocklyFlyoutCheckboxAnim');
+    }, 0);
+  }
 };
 
 /**
