@@ -434,6 +434,18 @@ Blockly.scratchBlocksUtils.duplicateSelectionAndDragCallback =
           Blockly.scratchBlocksUtils.changeObscuredShadowIds(newBlock);
           var oldPos = head.getRelativeToSurfaceXY();
           newBlock.moveBy(oldPos.x + pasteOffsetX, oldPos.y + pasteOffsetY);
+          // xml.js opens pinned comment bubbles with a 1ms timer. Starting the
+          // drag first (forceStartBoxDrag) snapshots the icons before their
+          // bubbles exist, so each bubble appears mid-drag at a stale position
+          // and only snaps back on mouse-up. Materialise them now; setVisible
+          // is idempotent and the timer becomes a no-op.
+          var copied = newBlock.getDescendants(false);
+          for (var c = 0; c < copied.length; c++) {
+            var pending = copied[c].comment;
+            if (pending && pending.deferredShow_) {
+              pending.deferredShow_();
+            }
+          }
           newRoots.push(newBlock);
         }
       } finally {

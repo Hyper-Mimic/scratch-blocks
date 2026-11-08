@@ -745,12 +745,33 @@ Blockly.Xml.domToBlockHeadless_ = function(xmlBlock, workspace) {
         var visible = xmlChild.getAttribute('pinned');
         if (visible && !block.isInFlyout) {
           // Give the renderer a millisecond to render and position the block
-          // before positioning the comment bubble.
-          setTimeout(function() {
-            if (block.comment && block.comment.setVisible) {
-              block.comment.setVisible(visible == 'true');
+          // before positioning the comment bubble. Capture this comment in its
+          // own closure (several blocks may be decoded in one loop).
+          (function(comment, show, ownerBlock, ws) {
+            var apply = function() {
+              if (!comment) {
+                return;
+              }
+              comment.deferredShow_ = null;
+              if (comment.setVisible) {
+                comment.setVisible(show);
+              }
+              // This bubble did not exist when the collapsed frame hid its
+              // scripts (domToWorkspace / onWorkspaceChange). Re-apply the
+              // frame's visibility so it cannot pop up over a folded frame.
+              if (show && ws && ws.rendered && ownerBlock) {
+                Blockly.Xml.restoreFrameVisibility_(ws,
+                    ownerBlock.getRootBlock());
+              }
+            };
+            if (show && comment) {
+              // Paste/drag code can flush this synchronously before a drag
+              // starts. A bubble created mid-drag anchors to a stale icon
+              // position and lags behind the copies until mouse-up.
+              comment.deferredShow_ = apply;
             }
-          }, 1);
+            setTimeout(apply, 1);
+          })(block.comment, visible == 'true', block, block.workspace);
         }
         var bubbleW = parseInt(xmlChild.getAttribute('w'), 10);
         var bubbleH = parseInt(xmlChild.getAttribute('h'), 10);
@@ -955,10 +976,7 @@ Blockly.Xml.restoreFrameVisibility_ = function(workspace, block) {
     var owned = frame.hasBlockId_ ? frame.hasBlockId_(block.id) :
         frame.getBlockIds().indexOf(block.id) !== -1;
     if (owned) {
-      var root = block.getSvgRoot();
-      if (root) {
-        root.style.display = 'none';
-      }
+      Blockly.Frame.setMemberStackVisible_(block, false);
       return;
     }
   }
