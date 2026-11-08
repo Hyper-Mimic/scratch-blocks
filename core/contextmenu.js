@@ -42,6 +42,7 @@ goog.require('goog.events');
 goog.require('goog.style');
 goog.require('goog.ui.Menu');
 goog.require('goog.ui.MenuItem');
+goog.require('goog.ui.MenuSeparator');
 goog.require('goog.userAgent');
 
 
@@ -92,6 +93,15 @@ Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
 };
 
 /**
+ * Make a menu option that renders as a non-interactive divider.
+ * @return {!Object} A separator option.
+ * @package
+ */
+Blockly.ContextMenu.separator = function() {
+  return {separator: true};
+};
+
+/**
  * Create the context menu object and populate it with the given options.
  * @param {!Array.<!Object>} options Array of menu options.
  * @param {boolean} rtl True if RTL, false if LTR.
@@ -103,6 +113,7 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
     {text: 'Make It So',
      enabled: true,
      callback: Blockly.MakeItSo}
+    A Blockly.ContextMenu.separator() option renders a divider instead.
   */
   var menu = new goog.ui.Menu();
   menu.setRightToLeft(rtl);
@@ -116,6 +127,10 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
   });
 
   for (var i = 0, option; option = options[i]; i++) {
+    if (option.separator) {
+      menu.addChild(new goog.ui.MenuSeparator(), true);
+      continue;
+    }
     var menuItem = new goog.ui.MenuItem(option.text);
     menuItem.setRightToLeft(rtl);
     menu.addChild(menuItem, true);
@@ -743,6 +758,11 @@ Blockly.ContextMenu.createFrameFromSelection_ = function(selection) {
     height: (maxY - minY) + (2 * pad) + header
   });
   Blockly.Events.fire(new Blockly.Events.FrameCreate(frame));
+  // The frame is now the active object; leaving the blocks highlighted makes
+  // it look like the selection (and its rubber-band styling) is still live.
+  if (ws.clearBoxSelection) {
+    ws.clearBoxSelection();
+  }
 };
 
 // End helper functions for creating context menu options.

@@ -837,8 +837,8 @@ Blockly.IntersectionObserver.prototype.checkForIntersections = function() {
       block.setIntersects(true);
       continue;
     }
-    // A frame drag lifts its members onto a flyout-top surface; the pass must
-    // leave their display state alone until the drag ends.
+    // A frame drag moves its members with it; the pass must leave their
+    // display state alone until the drag ends.
     if (workspace.frameDragActiveBlocks_ &&
         workspace.frameDragActiveBlocks_.has(block)) {
       continue;

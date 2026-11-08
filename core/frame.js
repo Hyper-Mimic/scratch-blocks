@@ -105,13 +105,6 @@ Blockly.Frame = function(workspace, opt_options) {
   this.dragMemberEvents_ = null;
   this.lastDragXY_ = null;
 
-  /** @type {?Element} @private */
-  this.dragSurface_ = null;
-  /** @type {?Element} @private */
-  this.dragSurfaceLayer_ = null;
-  /** @type {?Array.<!Element>} @private */
-  this.dragSurfaceRoots_ = null;
-
   this.rendered_ = false;
 
   this.createDom_();
@@ -818,8 +811,9 @@ Blockly.Frame.prototype.moveTo = function(x, y) {
 };
 
 /**
- * Move the frame during a drag. Frames stay on the block canvas so that they
- * keep painting behind the blocks, so there is never a drag surface to use.
+ * Move the frame during a drag. The frame and its members stay on the block
+ * canvas, so comment bubbles keep their workspace-relative anchors and the
+ * frame keeps painting behind every block. There is no drag surface to use.
  * @param {?Blockly.BlockDragSurfaceSvg} _dragSurface Unused.
  * @param {!goog.math.Coordinate} newLoc The new location, in workspace units.
  * @package
@@ -827,12 +821,6 @@ Blockly.Frame.prototype.moveTo = function(x, y) {
 Blockly.Frame.prototype.moveDuringDrag = function(_dragSurface, newLoc) {
   if (this.locked_) {
     return;
-  }
-  if (this.dragSurfaceLayer_) {
-    var transform = this.workspace.getCanvas().getAttribute('transform');
-    if (transform) {
-      this.dragSurfaceLayer_.setAttribute('transform', transform);
-    }
   }
   this.translate(newLoc.x, newLoc.y);
   this.dragMembersTo_(newLoc.x, newLoc.y);
@@ -868,7 +856,9 @@ Blockly.Frame.prototype.dragMembersTo_ = function(x, y) {
     for (var i = 0; i < this.dragMembers_.length; i++) {
       var origin = this.dragMemberStarts_[i];
       this.dragMembers_[i].translate(origin.x + totalX, origin.y + totalY);
-      this.dragMembers_[i].moveConnections_(dx, dy);
+      // Rigid translation from the captured canvas coordinates; the icon
+      // anchors can move by the same delta without re-walking the DOM.
+      this.dragMembers_[i].moveConnections_(dx, dy, true);
     }
   } finally {
     Blockly.Events.enable();
@@ -911,9 +901,9 @@ Blockly.Frame.prototype.setDragging = function(adding) {
           new Blockly.Events.BlockMove(this.dragMembers_[i]));
     }
     Blockly.utils.addClass(this.svgGroup_, 'blocklyDragging');
-    this.startDragSurface_();
+    this.startFrameDrag_();
   } else {
-    this.stopDragSurface_();
+    this.stopFrameDrag_();
     if (this.dragMemberEvents_) {
       for (var j = 0; j < this.dragMemberEvents_.length; j++) {
         var event = this.dragMemberEvents_[j];
@@ -933,68 +923,32 @@ Blockly.Frame.prototype.setDragging = function(adding) {
 };
 
 /**
- * Lift the frame and its scripts onto a sibling SVG that paints above the
- * flyout (z-index 45). The flyout is a sibling of the workspace SVG, so a layer
- * inside the block canvas always renders below it.
+ * Start a frame drag. The frame stays on the block canvas, in front of the
+ * other frames but behind every block (bringToFront). It used to be lifted
+ * with its member stacks onto a sibling SVG above the flyout, but that put the
+ * frame in front of all other blocks and moved member stacks out of the
+ * workspace SVG: BlockSvg.getRelativeToSurfaceXY() then walked up into the
+ * HTML document, so comment icons/bubbles anchored to wrong coordinates.
  * @private
  */
-Blockly.Frame.prototype.startDragSurface_ = function() {
-  var workspace = this.workspace;
-  var injectionDiv = workspace.getParentSvg().parentNode;
-  var surface = Blockly.utils.createSvgElement('svg',
-      {
-        'xmlns': Blockly.SVG_NS,
-        'version': '1.1',
-        'class': 'blocklyFrameDragSurface'
-      }, injectionDiv);
-  var layer = Blockly.utils.createSvgElement('g', {}, surface);
-  surface.style.display = 'block';
-  var transform = workspace.getCanvas().getAttribute('transform');
-  if (transform) {
-    layer.setAttribute('transform', transform);
-  }
-  this.dragSurface_ = surface;
-  this.dragSurfaceLayer_ = layer;
-
-  var roots = [this.svgGroup_];
-  for (var i = 0; i < this.dragMembers_.length; i++) {
-    var block = this.dragMembers_[i];
-    if (block.intersects_ === false) {
-      block.setIntersects(true);
-    }
-    var root = block.getSvgRoot();
-    if (root) {
-      roots.push(root);
-    }
-  }
-  this.dragSurfaceRoots_ = roots;
-  for (var j = 0; j < roots.length; j++) {
-    layer.appendChild(roots[j]);
-  }
-  workspace.frameDragActiveBlocks_ = new Set(this.dragMembers_);
+Blockly.Frame.prototype.startFrameDrag_ = function() {
+  this.bringToFront();
+  // Viewport culling must not unload the stacks travelling with the frame.
+  this.workspace.frameDragActiveBlocks_ = new Set(this.dragMembers_);
 };
 
 /**
- * Put the frame and its scripts back on the block canvas.
+ * Finish a frame drag and restore the normal workspace bookkeeping.
  * @private
  */
-Blockly.Frame.prototype.stopDragSurface_ = function() {
-  if (!this.dragSurface_) {
+Blockly.Frame.prototype.stopFrameDrag_ = function() {
+  if (!this.workspace) {
     return;
   }
-  var canvas = this.workspace.getCanvas();
-  this.bringToFront();
-  var roots = this.dragSurfaceRoots_ || [];
-  for (var i = 1; i < roots.length; i++) {
-    if (roots[i].parentNode !== canvas) {
-      canvas.appendChild(roots[i]);
-    }
-  }
-  goog.dom.removeNode(this.dragSurface_);
-  this.dragSurface_ = null;
-  this.dragSurfaceLayer_ = null;
-  this.dragSurfaceRoots_ = null;
   this.workspace.frameDragActiveBlocks_ = null;
+  if (this.svgGroup_ && this.svgGroup_.parentNode) {
+    this.bringToFront();
+  }
   this.workspace.resizeContents();
 };
 
@@ -1188,17 +1142,43 @@ Blockly.Frame.prototype.growToFitBlocks = function(opt_measured) {
 };
 
 /**
- * Show or hide the blocks inside the frame.
+ * Show or hide one member stack together with its comment bubbles.
+ * Comment bubbles live on the workspace's bubble canvas, NOT inside the block's
+ * svgGroup, so hiding the block root alone leaves them on screen when a frame
+ * is collapsed (2026-11-08). Comments can sit on any block of the stack, so
+ * walk every descendant rather than just the top block.
+ * @param {!Blockly.BlockSvg} block A block owned by a frame.
+ * @param {boolean} visible Whether the stack and its bubbles should be shown.
+ * @package
+ */
+Blockly.Frame.setMemberStackVisible_ = function(block, visible) {
+  var display = visible ? '' : 'none';
+  // Always work from the stack root: hiding a nested <g> would leave it
+  // invisible after the frame expands, since setCollapsed only restores roots.
+  var top = block.getRootBlock();
+  var root = top.getSvgRoot();
+  if (root) {
+    root.style.display = display;
+  }
+  var stack = top.getDescendants(false);
+  for (var i = 0; i < stack.length; i++) {
+    var comment = stack[i].comment;
+    var group = comment && comment.bubble_ && comment.bubble_.bubbleGroup_;
+    if (group) {
+      group.style.display = display;
+    }
+  }
+};
+
+/**
+ * Show or hide the blocks inside the frame, and their comment bubbles.
  * @param {boolean} visible Whether the blocks should be visible.
  * @private
  */
 Blockly.Frame.prototype.setMembersVisible_ = function(visible) {
   var blocks = this.getMembers();
   for (var i = 0; i < blocks.length; i++) {
-    var root = blocks[i].getSvgRoot();
-    if (root) {
-      root.style.display = visible ? '' : 'none';
-    }
+    Blockly.Frame.setMemberStackVisible_(blocks[i], visible);
   }
 };
 
@@ -1243,12 +1223,10 @@ Blockly.Frame.prototype.setCollapsed = function(collapsed) {
   // its title bar, but every other block keeps its workspace coordinates.
 
   for (var j = 0; j < members.length; j++) {
-    var root = members[j].getSvgRoot();
-    if (root) {
-      // A stack culled off-screen stays hidden when its frame expands.
-      root.style.display = collapsed || members[j].intersects_ === false ?
-          'none' : '';
-    }
+    // A stack culled off-screen stays hidden when its frame expands, and its
+    // comment bubbles stay hidden with it.
+    Blockly.Frame.setMemberStackVisible_(members[j],
+        !collapsed && members[j].intersects_ !== false);
   }
   this.updateCollapseIcon_();
 
@@ -1584,6 +1562,9 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
     return;
   }
 
+  var hasBlocks = frame.getMembers().length > 0;
+
+  // Group 1: the frame's own appearance and view state.
   options.push({
     text: Blockly.Msg.RENAME_FRAME,
     enabled: true,
@@ -1600,7 +1581,22 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
     }
   });
 
-  var hasBlocks = frame.getMembers().length > 0;
+  options.push({
+    text: this.collapsed_ ? Blockly.Msg.EXPAND_FRAME : Blockly.Msg.COLLAPSE_FRAME,
+    enabled: true,
+    callback: function() {
+      Blockly.Events.setGroup(true);
+      try {
+        frame.setCollapsed(!frame.isCollapsed());
+      } finally {
+        Blockly.Events.setGroup(false);
+      }
+    }
+  });
+
+  options.push(Blockly.ContextMenu.separator());
+
+  // Group 2: operations on the scripts inside the frame.
   options.push({
     text: Blockly.Msg.CLEAN_UP_FRAME,
     enabled: hasBlocks,
@@ -1625,16 +1621,14 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
     }
   });
 
+  options.push(Blockly.ContextMenu.separator());
+
+  // Group 3: frame-wide state and removal. Destructive action stays last.
   options.push({
-    text: this.collapsed_ ? Blockly.Msg.EXPAND_FRAME : Blockly.Msg.COLLAPSE_FRAME,
+    text: Blockly.Msg.LOCK_FRAME,
     enabled: true,
     callback: function() {
-      Blockly.Events.setGroup(true);
-      try {
-        frame.setCollapsed(!frame.isCollapsed());
-      } finally {
-        Blockly.Events.setGroup(false);
-      }
+      frame.setLocked(true);
     }
   });
 
@@ -1648,14 +1642,6 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
       } finally {
         Blockly.Events.setGroup(false);
       }
-    }
-  });
-
-  options.push({
-    text: Blockly.Msg.LOCK_FRAME,
-    enabled: true,
-    callback: function() {
-      frame.setLocked(true);
     }
   });
 
@@ -1690,7 +1676,7 @@ Blockly.Frame.prototype.dispose = function(opt_animate) {
     this.setCollapsed(false);
   }
   this.unbindDragEvents_();
-  this.stopDragSurface_();
+  this.stopFrameDrag_();
   if (opt_animate && this.rendered_ && !this.workspace.isClearing &&
       this.svgGroup_ && this.workspace.getAudioManager) {
     // A frame deleted from the trash still carries the delete-cursor class.
@@ -1791,8 +1777,8 @@ Blockly.Frame.onWorkspaceChange = function(workspace, event) {
   if (!workspace.topFrames_.length) {
     return;
   }
-  // A frame drag has its members lifted onto a sibling SVG; measuring them now
-  // would feed bogus coordinates into every frame's grow-to-fit pass.
+  // The members are moving with the frame; measuring them now would resize
+  // frames against positions that are still in flight.
   if (workspace.frameDragActiveBlocks_) {
     return;
   }
