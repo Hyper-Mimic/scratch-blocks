@@ -42,7 +42,6 @@ goog.require('goog.events');
 goog.require('goog.style');
 goog.require('goog.ui.Menu');
 goog.require('goog.ui.MenuItem');
-goog.require('goog.ui.MenuSeparator');
 goog.require('goog.userAgent');
 
 
@@ -104,11 +103,14 @@ Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
 };
 
 /**
- * Make a menu option that renders as a non-interactive divider.
+ * Make a menu option that renders as a group break. No standalone row is
+ * inserted; the item that follows the divider is decorated with the GUI's
+ * separator style (class `sa-blockly-menu-item-border`, see addons/api.js),
+ * keeping menu children indexed 1:1 with the options array.
  * Deliberately uses `divider`, NOT `separator`: the GUI addon API already uses
  * `separator: true` as a flag on a normal menu item ("draw a line above this
  * item", see addons/api.js createBlockContextMenu). Reusing that key made
- * populate_() swallow addon items and turned frame dividers into double lines.
+ * populate_() swallow addon items.
  * @return {!Object} A divider option.
  * @package
  */
@@ -128,7 +130,9 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
     {text: 'Make It So',
      enabled: true,
      callback: Blockly.MakeItSo}
-    A Blockly.ContextMenu.separator() option renders a divider instead.
+    A Blockly.ContextMenu.separator() option marks the following item with the
+    GUI's separator style instead of inserting a standalone row, so menu
+    children stay indexed 1:1 with the options array.
     Addon items carrying `separator: true` are ordinary menu items; their
     divider is drawn by the GUI after show(), so leave them alone here.
   */
@@ -143,14 +147,21 @@ Blockly.ContextMenu.populate_ = function(options, rtl) {
     acceptContextMenuEvents = true;
   });
 
+  var pendingDivider = false;
   for (var i = 0, option; option = options[i]; i++) {
     if (option.divider) {
-      menu.addChild(new goog.ui.MenuSeparator(), true);
+      // A divider before the first item (or a doubled divider) draws nothing:
+      // the break lives on the next item's top edge, like the GUI does it.
+      pendingDivider = menu.getChildCount() > 0;
       continue;
     }
     var menuItem = new goog.ui.MenuItem(option.text);
     menuItem.setRightToLeft(rtl);
     menu.addChild(menuItem, true);
+    if (pendingDivider) {
+      pendingDivider = false;
+      menuItem.followsDivider_ = true;
+    }
     menuItem.setEnabled(option.enabled);
     if (option.enabled) {
       goog.events.listen(
@@ -214,6 +225,18 @@ Blockly.ContextMenu.createWidget_ = function(menu) {
   menu.render(div);
   var menuDom = menu.getElement();
   Blockly.utils.addClass(menuDom, 'blocklyContextMenu');
+  // Items that follow a separator() divider get the GUI's separator look:
+  // the class name and the exact inline values used by addons/api.js
+  // (2px gap, 1px theme-coloured line on the item's top edge).
+  for (var i = 0, child; child = menu.getChildAt(i); i++) {
+    if (child.followsDivider_ && child.getElement()) {
+      var elt = child.getElement();
+      elt.classList.add('sa-blockly-menu-item-border');
+      elt.style.marginTop = '2px';
+      elt.style.boxShadow =
+          '0 -1px 0 0 var(--ui-black-transparent, rgba(0, 0, 0, 0.15))';
+    }
+  }
   // Prevent system context menu when right-clicking a Blockly context menu.
   Blockly.bindEventWithChecks_(
       menuDom, 'contextmenu', null, Blockly.utils.noEvent);
