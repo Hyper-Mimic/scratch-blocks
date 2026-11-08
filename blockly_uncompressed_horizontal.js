@@ -59,7 +59,7 @@ goog.addDependency("../../../" + dir + "/core/comment_events.js", ['Blockly.Even
 goog.addDependency("../../../" + dir + "/core/connection.js", ['Blockly.Connection'], ['Blockly.Events.BlockMove', 'goog.asserts', 'goog.dom']);
 goog.addDependency("../../../" + dir + "/core/connection_db.js", ['Blockly.ConnectionDB'], ['Blockly.Connection']);
 goog.addDependency("../../../" + dir + "/core/constants.js", ['Blockly.constants'], []);
-goog.addDependency("../../../" + dir + "/core/contextmenu.js", ['Blockly.ContextMenu'], ['Blockly.Events.BlockCreate', 'Blockly.Events.FrameCreate', 'Blockly.Frame', 'Blockly.scratchBlocksUtils', 'Blockly.utils', 'Blockly.utils.uiMenu', 'goog.dom', 'goog.events', 'goog.style', 'goog.ui.Menu', 'goog.ui.MenuItem', 'goog.userAgent']);
+goog.addDependency("../../../" + dir + "/core/contextmenu.js", ['Blockly.ContextMenu'], ['Blockly.Events.BlockCreate', 'Blockly.Events.FrameCreate', 'Blockly.Frame', 'Blockly.scratchBlocksUtils', 'Blockly.utils', 'Blockly.utils.uiMenu', 'goog.dom', 'goog.events', 'goog.style', 'goog.ui.Menu', 'goog.ui.MenuItem', 'goog.ui.MenuSeparator', 'goog.userAgent']);
 goog.addDependency("../../../" + dir + "/core/css.js", ['Blockly.Css'], ['Blockly.Colours', 'goog.userAgent']);
 goog.addDependency("../../../" + dir + "/core/data_category.js", ['Blockly.DataCategory'], ['Blockly.Blocks', 'Blockly.VariableModel', 'Blockly.Variables', 'Blockly.Workspace']);
 goog.addDependency("../../../" + dir + "/core/dragged_connection_manager.js", ['Blockly.DraggedConnectionManager'], ['Blockly.BlockAnimations', 'Blockly.RenderedConnection', 'goog.math.Coordinate']);
