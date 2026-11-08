@@ -1508,5 +1508,102 @@ Blockly.Css.CONTENT = [
   '.scratchCategoryMenuItem:hover {',
     'color: $colour_toolboxHover !important;',
   '}',
+
+  /* FieldDropdown option list. The stock Closure rules above were written for
+     desktop context menus: an accelerator column, a sprite checkmark and
+     square grey separators. Scope every override to DropDownDiv so the
+     right-click menu keeps its own theme. */
+  /* One box for every item, including the RTL / noaccel / nocheckbox variants
+     defined above. A permanent transparent border keeps resting and hover
+     boxes identical, so non-100% browser zoom cannot make items jump. */
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem {',
+    'padding: 5px 16px 5px 32px;',
+    'min-height: 24px;',
+    'border: 1px solid transparent;',
+    'border-radius: 4px;',
+    'margin: 1px 2px;',
+    'transition: background-color .12s ease;',
+  '}',
+
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem.goog-menuitem-rtl {',
+    'padding: 5px 32px 5px 16px;',
+  '}',
+
+  /* The inherited Closure rule hard-codes #000 on the content span, which
+     overrides the themed colour set on the item itself. */
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem-content {',
+    'color: $colour_text;',
+    'line-height: 18px;',
+  '}',
+
+  /* Replace the sprite tick with a CSS one in the menu's own text colour so it
+     stays legible on every category / custom-theme background. */
+  '.blocklyDropDownDiv .goog-menu .goog-option-selected .goog-menuitem-checkbox,',
+  '.blocklyDropDownDiv .goog-menu .goog-option-selected .goog-menuitem-icon {',
+    'background: none !important;',
+    'position: relative;',
+    /* The shared Closure rule sets left:6px for the absolute resting state.
+       With position:relative that offset still applies and pushes the tick
+       right; zero it, then pull the whole check further into the gutter. */
+    'left: 0;',
+    'right: 0;',
+    'margin-left: -28px;',
+  '}',
+
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem-rtl.goog-option-selected .goog-menuitem-checkbox,',
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem-rtl.goog-option-selected .goog-menuitem-icon {',
+    'margin-left: 0;',
+    'margin-right: -28px;',
+  '}',
+
+  '.blocklyDropDownDiv .goog-menu .goog-option-selected .goog-menuitem-checkbox::after,',
+  '.blocklyDropDownDiv .goog-menu .goog-option-selected .goog-menuitem-icon::after {',
+    'content: "";',
+    'position: absolute;',
+    'left: 4px;',
+    'top: 1px;',
+    'width: 5px;',
+    'height: 9px;',
+    'border: solid $colour_text;',
+    'border-width: 0 2px 2px 0;',
+    'transform: rotate(45deg);',
+  '}',
+
+  '.blocklyDropDownDiv .goog-menu .goog-menuitem-rtl.goog-option-selected .goog-menuitem-checkbox::after {',
+    'left: auto;',
+    'right: 4px;',
+  '}',
+
+  '.blocklyDropDownDiv .goog-menu .goog-menuseparator {',
+    'border-top: 1px solid $colour_menuHover;',
+    'margin: 4px 8px;',
+  '}',
+
+  /* The list scrolls with the native scrollbar; make it match the thin,
+     theme-aware scrollbars used elsewhere instead of the OS default. */
+  '.blocklyDropDownContent {',
+    'scrollbar-width: thin;',
+    'scrollbar-color: $colour_menuHover transparent;',
+  '}',
+
+  '.blocklyDropDownContent::-webkit-scrollbar {',
+    'width: 8px;',
+    'height: 8px;',
+  '}',
+
+  '.blocklyDropDownContent::-webkit-scrollbar-track {',
+    'background: transparent;',
+  '}',
+
+  '.blocklyDropDownContent::-webkit-scrollbar-thumb {',
+    'background: $colour_menuHover;',
+    'border-radius: 4px;',
+  '}',
+
+  '@media (prefers-reduced-motion: reduce) {',
+    '.blocklyDropDownDiv .goog-menu .goog-menuitem {',
+      'transition: none;',
+    '}',
+  '}',
   ''
 ];
