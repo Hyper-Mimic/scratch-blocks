@@ -2260,7 +2260,13 @@ Blockly.WorkspaceSvg.prototype.cleanUpBlocks = function(blocks, x, y) {
   for (var i = 0; i < ordered.length; i++) {
     var block = ordered[i];
     var xy = block.getRelativeToSurfaceXY();
-    block.moveBy(x - xy.x, cursorY - xy.y);
+    // Align the VISUAL top edge, not the origin: hat blocks draw above their
+    // own transform origin, so positioning the origin here would leave their
+    // arc ~16px higher than intended (e.g. touching a frame's title bar).
+    // The frame-hugging convention (fitToContent / createFrameFromSelection_)
+    // measures with getBoundingRectangle(), which includes the overhang.
+    var topOffset = xy.y - block.getBoundingRectangle().topLeft.y;
+    block.moveBy(x - xy.x, cursorY - (xy.y - topOffset));
     block.snapToGrid();
     cursorY = block.getRelativeToSurfaceXY().y +
         block.getHeightWidth().height + Blockly.BlockSvg.MIN_BLOCK_Y;
