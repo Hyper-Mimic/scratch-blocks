@@ -257,6 +257,12 @@ Blockly.DropDownDiv.show = function(owner, primaryX, primaryY, secondaryX, secon
   Blockly.DropDownDiv.owner_ = owner;
   Blockly.DropDownDiv.onHide_ = opt_onHide;
   var div = Blockly.DropDownDiv.DIV_;
+  // A previous drop-down may still be fading out: stop that timer before it
+  // fires hideWithoutAnimation() and kills this one, and re-enable pointer
+  // events that hide() turned off for the fade.
+  Blockly.DropDownDiv.animateOutTimer_ &&
+      window.clearTimeout(Blockly.DropDownDiv.animateOutTimer_);
+  div.style.pointerEvents = '';
   // Lay the div out before measuring it. A drop-down that is still display:none
   // gets measured through a temporary display, which reports a smaller box than
   // the one that ends up on screen, and everything derived from that height --
@@ -425,13 +431,24 @@ Blockly.DropDownDiv.hideIfOwner = function(owner) {
 
 /**
  * Hide the menu, triggering animation.
+ * The box flies back to the anchor point it opened from and fades out - the
+ * exact mirror of the open animation in show().
  */
 Blockly.DropDownDiv.hide = function() {
+  if (!Blockly.DropDownDiv.isVisible()) {
+    return;
+  }
   // Start the animation by setting the translation and fading out.
   var div = Blockly.DropDownDiv.DIV_;
   // Reset to (initialX, initialY) - i.e., no translation.
   div.style.transform = 'translate(0px, 0px)';
   div.style.opacity = 0;
+  // The box is on its way out; make it click-through so the fading ghost
+  // cannot steal pointer events from whatever interaction triggered the hide
+  // (hideChaff runs on the mousedown that may start a drag or open a menu).
+  div.style.pointerEvents = 'none';
+  Blockly.DropDownDiv.animateOutTimer_ &&
+      window.clearTimeout(Blockly.DropDownDiv.animateOutTimer_);
   Blockly.DropDownDiv.animateOutTimer_ = setTimeout(function() {
     // Finish animation - reset all values to default.
     Blockly.DropDownDiv.hideWithoutAnimation();
@@ -454,6 +471,7 @@ Blockly.DropDownDiv.hideWithoutAnimation = function() {
   div.style.transform = '';
   div.style.top = '';
   div.style.left = '';
+  div.style.pointerEvents = '';
   div.style.display = 'none';
   Blockly.DropDownDiv.clearContent();
   Blockly.DropDownDiv.owner_ = null;

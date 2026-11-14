@@ -420,7 +420,10 @@ Blockly.hideChaffOnResize = function(opt_allowToolbox) {
  */
 Blockly.hideChaffInternal_ = function(opt_allowToolbox) {
   Blockly.Tooltip.hide();
-  Blockly.DropDownDiv.hideWithoutAnimation();
+  // Animated: the drop-down flies back to its field, mirroring the open
+  // animation. DropDownDiv.hide() is a no-op when nothing is showing, and
+  // editors that replace it immediately still call hideWithoutAnimation().
+  Blockly.DropDownDiv.hide();
   if (!opt_allowToolbox) {
     var workspace = Blockly.getMainWorkspace();
     if (workspace.toolbox_ &&
