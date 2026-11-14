@@ -168,6 +168,17 @@ Blockly.BlockDragSurfaceSvg.prototype.createDom = function() {
 };
 
 /**
+ * Get the ID of the drop-shadow filter created in createDom. Dragged elements
+ * that stay on the block canvas (e.g. frames) reference the same filter so
+ * their shadow matches the one the drag surface gives blocks and comments.
+ * @return {string} The filter element's ID, or '' before createDom.
+ * @package
+ */
+Blockly.BlockDragSurfaceSvg.prototype.getDragShadowFilterId = function() {
+  return this.dragShadowFilterId_;
+};
+
+/**
  * Scratch-specific: Create the SVG def for the drop shadow.
  * @param {Element} defs Defs element to insert the shadow filter definition
  * @return {string} ID for the filter element

@@ -451,28 +451,89 @@ Blockly.Frame.prototype.setSize = function(width, height) {
   this.width_ = width;
   this.height_ = height;
 
-  var drawnHeight = this.collapsed_ ? Blockly.Frame.TOP_BAR_HEIGHT : height;
+  this.applyDrawnSize_(this.collapsed_ ?
+      Blockly.Frame.TOP_BAR_HEIGHT : this.height_);
+};
 
-  this.svgRect_.setAttribute('width', width);
+/**
+ * Apply the rendered geometry for a given drawn height. The frame's logical
+ * size (width_/height_) never changes during a collapse animation; only the
+ * drawn height interpolates between the title bar and the full box.
+ * @param {number} drawnHeight Height to render, in workspace units.
+ * @private
+ */
+Blockly.Frame.prototype.applyDrawnSize_ = function(drawnHeight) {
+  this.drawnHeight_ = drawnHeight;
+
+  this.svgRect_.setAttribute('width', this.width_);
   this.svgRect_.setAttribute('height', drawnHeight);
-  this.svgTopBar_.setAttribute('width', width);
+  this.svgTopBar_.setAttribute('width', this.width_);
 
   var iconSize = Blockly.Frame.ICON_SIZE;
   // The right-hand icons are the only things that have to be repositioned
   // whenever the frame's width changes. The lock sits just left of the delete.
-  this.deleteIcon_.setAttribute('x', width - iconSize);
+  this.deleteIcon_.setAttribute('x', this.width_ - iconSize);
   // Nudge the lock towards the close button so the two glyphs read as a pair.
-  this.lockIcon_.setAttribute('x', width - (2 * iconSize) + 8);
+  this.lockIcon_.setAttribute('x', this.width_ - (2 * iconSize) + 8);
 
   this.foreignObject_.setAttribute('width',
-      Math.max(0, width - (3 * iconSize)));
+      Math.max(0, this.width_ - (3 * iconSize)));
 
   this.resizeGroup_.setAttribute('transform', 'translate(' +
-      (width - Blockly.Frame.RESIZE_SIZE) + ',' +
+      (this.width_ - Blockly.Frame.RESIZE_SIZE) + ',' +
       (drawnHeight - Blockly.Frame.RESIZE_SIZE) + ')');
   this.resizeGroup_.setAttribute('display',
       this.collapsed_ || this.locked_ ? 'none' : '');
   this.invalidateBounds_();
+};
+
+/**
+ * Tween the frame's drawn height between two values with an ease-out curve.
+ * A monotonically increasing token cancels a stale animation when the user
+ * toggles collapse twice quickly.
+ * @param {number} fromHeight Drawn height to start from.
+ * @param {number} toHeight Drawn height to end at.
+ * @param {Function=} opt_onDone Called once the animation settles.
+ * @private
+ */
+Blockly.Frame.prototype.animateCollapse_ = function(
+    fromHeight, toHeight, opt_onDone) {
+  var self = this;
+  if (window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    self.applyDrawnSize_(toHeight);
+    if (opt_onDone) {
+      opt_onDone();
+    }
+    return;
+  }
+  var token = (this.collapseAnimId_ = (this.collapseAnimId_ || 0) + 1);
+  if (fromHeight == toHeight) {
+    self.applyDrawnSize_(toHeight);
+    if (opt_onDone) {
+      opt_onDone();
+    }
+    return;
+  }
+  var start = null;
+  var DURATION = 200;
+  var step = function(ts) {
+    if (self.collapseAnimId_ !== token || !self.svgRect_) {
+      return;  // Superseded by another toggle, or the frame was disposed.
+    }
+    if (start === null) {
+      start = ts;
+    }
+    var t = Math.min(1, (ts - start) / DURATION);
+    var eased = 1 - Math.pow(1 - t, 3);
+    self.applyDrawnSize_(fromHeight + (toHeight - fromHeight) * eased);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else if (opt_onDone) {
+      opt_onDone();
+    }
+  };
+  requestAnimationFrame(step);
 };
 
 /**
@@ -935,6 +996,16 @@ Blockly.Frame.prototype.startFrameDrag_ = function() {
   this.bringToFront();
   // Viewport culling must not unload the stacks travelling with the frame.
   this.workspace.frameDragActiveBlocks_ = new Set(this.dragMembers_);
+  // Reuse the block drag surface's drop-shadow filter (feGaussianBlur +
+  // dragShadowOpacity), so a dragged frame casts the same shadow as a
+  // dragged comment or block. The filter is referenced by document-wide ID,
+  // which works even though the frame group lives in the workspace SVG.
+  if (this.svgGroup_ && this.workspace.blockDragSurface_) {
+    var filterId = this.workspace.blockDragSurface_.getDragShadowFilterId();
+    if (filterId) {
+      this.svgGroup_.setAttribute('filter', 'url(#' + filterId + ')');
+    }
+  }
 };
 
 /**
@@ -946,6 +1017,11 @@ Blockly.Frame.prototype.stopFrameDrag_ = function() {
     return;
   }
   this.workspace.frameDragActiveBlocks_ = null;
+  if (this.svgGroup_) {
+    // Drop the drag shadow before (or instead of) repainting on top; the
+    // frame must not keep its filter after the drag ends.
+    this.svgGroup_.removeAttribute('filter');
+  }
   if (this.svgGroup_ && this.svgGroup_.parentNode) {
     this.bringToFront();
   }
@@ -1159,6 +1235,11 @@ Blockly.Frame.setMemberStackVisible_ = function(block, visible) {
   var root = top.getSvgRoot();
   if (root) {
     root.style.display = display;
+    if (visible) {
+      // Clear a leftover fade opacity so a restored stack is never stuck
+      // semi-transparent when no fade animation is running.
+      root.removeAttribute('opacity');
+    }
   }
   var stack = top.getDescendants(false);
   for (var i = 0; i < stack.length; i++) {
@@ -1166,8 +1247,34 @@ Blockly.Frame.setMemberStackVisible_ = function(block, visible) {
     var group = comment && comment.bubble_ && comment.bubble_.bubbleGroup_;
     if (group) {
       group.style.display = display;
+      if (visible) {
+        group.removeAttribute('opacity');
+      }
     }
   }
+};
+
+/**
+ * Collect the SVG groups that fade with a member stack: the stack's root
+ * group plus every comment bubble group hanging off its blocks.
+ * @param {!Blockly.BlockSvg} block Any block in the member stack.
+ * @return {!Array.<!Element>} The SVG groups to fade.
+ * @private
+ */
+Blockly.Frame.memberFadeGroups_ = function(block) {
+  var groups = [];
+  var top = block.getRootBlock();
+  if (top.getSvgRoot()) {
+    groups.push(top.getSvgRoot());
+  }
+  var stack = top.getDescendants(false);
+  for (var i = 0; i < stack.length; i++) {
+    var comment = stack[i].comment;
+    if (comment && comment.bubble_ && comment.bubble_.bubbleGroup_) {
+      groups.push(comment.bubble_.bubbleGroup_);
+    }
+  }
+  return groups;
 };
 
 /**
@@ -1180,6 +1287,69 @@ Blockly.Frame.prototype.setMembersVisible_ = function(visible) {
   for (var i = 0; i < blocks.length; i++) {
     Blockly.Frame.setMemberStackVisible_(blocks[i], visible);
   }
+};
+
+/**
+ * Tween the opacity of the frame's member stacks (and their comment bubbles)
+ * between two values, in sync with the box's height animation, so collapse
+ * reads as a fade-out and expand as a fade-in. Token-based: a newer fade
+ * supersedes an older one mid-flight. Per-frame work is cheap SVG attribute
+ * writes -- no filters, no layout.
+ * @param {!Array.<!Blockly.BlockSvg>} members The member stacks to fade.
+ * @param {number} from Starting opacity (0-1).
+ * @param {number} to Ending opacity (0-1).
+ * @param {Function=} opt_onDone Called once the fade settles.
+ * @private
+ */
+Blockly.Frame.prototype.fadeMembers_ = function(members, from, to, opt_onDone) {
+  var self = this;
+  var finish = function() {
+    for (var i = 0; i < members.length; i++) {
+      if (to == 0) {
+        // Fully faded: hide for real (this also drops any fade opacity).
+        Blockly.Frame.setMemberStackVisible_(members[i], false);
+      } else {
+        var groups = Blockly.Frame.memberFadeGroups_(members[i]);
+        for (var j = 0; j < groups.length; j++) {
+          groups[j].removeAttribute('opacity');
+        }
+      }
+    }
+    if (opt_onDone) {
+      opt_onDone();
+    }
+  };
+  if (from == to || (window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    finish();
+    return;
+  }
+  var token = (this.fadeAnimId_ = (this.fadeAnimId_ || 0) + 1);
+  var start = null;
+  var DURATION = 200;
+  var step = function(ts) {
+    if (self.fadeAnimId_ !== token) {
+      return;  // Superseded by another toggle, or the frame was disposed.
+    }
+    if (start === null) {
+      start = ts;
+    }
+    var t = Math.min(1, (ts - start) / DURATION);
+    var eased = 1 - Math.pow(1 - t, 3);
+    var value = from + (to - from) * eased;
+    for (var i = 0; i < members.length; i++) {
+      var groups = Blockly.Frame.memberFadeGroups_(members[i]);
+      for (var j = 0; j < groups.length; j++) {
+        groups[j].setAttribute('opacity', value);
+      }
+    }
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      finish();
+    }
+  };
+  requestAnimationFrame(step);
 };
 
 /**
@@ -1222,15 +1392,31 @@ Blockly.Frame.prototype.setCollapsed = function(collapsed) {
   // PATCH 27: deliberately no shiftContentBelow_ call. The frame shrinks to
   // its title bar, but every other block keeps its workspace coordinates.
 
-  for (var j = 0; j < members.length; j++) {
-    // A stack culled off-screen stays hidden when its frame expands, and its
-    // comment bubbles stay hidden with it.
-    Blockly.Frame.setMemberStackVisible_(members[j],
-        !collapsed && members[j].intersects_ !== false);
-  }
   this.updateCollapseIcon_();
 
-  this.setSize(this.width_, this.height_);
+  // Collapse: fade the scripts out while the box shrinks over them, then hide
+  // them for real when the fade settles.
+  // Expand: reveal the scripts at opacity 0 (except stacks culled off-screen,
+  // which stay hidden) and fade them in while the box grows.
+  if (collapsed) {
+    this.fadeMembers_(members, 1, 0);
+  } else {
+    var visibleMembers = [];
+    for (var j = 0; j < members.length; j++) {
+      // A stack culled off-screen stays hidden when its frame expands, and
+      // its comment bubbles stay hidden with it.
+      if (members[j].intersects_ !== false) {
+        Blockly.Frame.setMemberStackVisible_(members[j], true);
+        visibleMembers.push(members[j]);
+      }
+    }
+    this.fadeMembers_(visibleMembers, 0, 1);
+  }
+  this.animateCollapse_(this.drawnHeight_,
+      collapsed ? Blockly.Frame.TOP_BAR_HEIGHT : this.height_);
+  // The logical size (width_/height_) is unchanged by collapsing; only the
+  // drawn height differs, and animateCollapse_ above renders it frame by
+  // frame. Calling setSize here would snap straight to the final geometry.
   this.workspace.resizeContents();
 };
 
