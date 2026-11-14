@@ -398,10 +398,15 @@ Blockly.onContextMenu_ = function(e) {
  */
 Blockly.hideChaff = function(opt_allowToolbox) {
   Blockly.hideChaffInternal_(opt_allowToolbox);
-  // Animated: the context menu fades out like the GUI's react-contextmenu.
-  // Widgets without dispose hooks (text input etc.) hide instantly anyway,
-  // so dropping opt_noAnimate only affects menus.
-  Blockly.WidgetDiv.hide();
+  // Only the context menu fades out on a chaff clear. Other widgets register
+  // dispose animations too (e.g. the text input's 0.25s shrink-back, whose
+  // resizeEditor_ listener keeps restarting the transition while dragging) -
+  // those must vanish immediately, as they did before the menu fade existed.
+  if (Blockly.WidgetDiv.getOwner() === Blockly.ContextMenu) {
+    Blockly.WidgetDiv.hide();
+  } else {
+    Blockly.WidgetDiv.hide(true);
+  }
 };
 
 /**

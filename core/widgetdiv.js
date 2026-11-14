@@ -210,6 +210,14 @@ Blockly.WidgetDiv.isVisible = function() {
 };
 
 /**
+ * Get the object currently using this container, if any.
+ * @return {?Object} The current owner, or null if the div is not in use.
+ */
+Blockly.WidgetDiv.getOwner = function() {
+  return Blockly.WidgetDiv.owner_;
+};
+
+/**
  * Destroy the widget and hide the div if it is being used by the specified
  *   object.
  * @param {!Object} oldOwner The object that was using this container.
