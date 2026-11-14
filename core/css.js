@@ -1547,7 +1547,7 @@ Blockly.Css.CONTENT = [
        right; zero it, then pull the whole check further into the gutter. */
     'left: 0;',
     'right: 0;',
-    'margin-left: -28px;',
+    /* 'margin-left: -28px;', */
   '}',
 
   '.blocklyDropDownDiv .goog-menu .goog-menuitem-rtl.goog-option-selected .goog-menuitem-checkbox,',
