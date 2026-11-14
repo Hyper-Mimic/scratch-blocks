@@ -399,16 +399,69 @@ Blockly.ScratchBlockComment.prototype.setMinimized = function(minimize) {
   this.isMinimized_ = minimize;
   if (minimize) {
     this.bubble_.setMinimized(true, this.getLabelText());
-    this.setBubbleSize(Blockly.ScratchBlockComment.MINIMIZE_WIDTH,
-        Blockly.ScratchBubble.TOP_BAR_HEIGHT);
     // Note we are not updating this.width_ or this.height_ here
     // because we want to keep track of the width/height of the
     // maximized comment
+    this.animateBubbleSize_(Blockly.ScratchBlockComment.MINIMIZE_WIDTH,
+        Blockly.ScratchBubble.TOP_BAR_HEIGHT);
   } else {
     this.bubble_.setMinimized(false);
     this.setText(this.text_);
-    this.setBubbleSize(this.width_, this.height_);
+    this.animateBubbleSize_(this.width_, this.height_);
   }
+};
+
+/**
+ * Tween the comment bubble between its current size and a target size with an
+ * ease-out curve, so minimize/restore reads as a motion instead of a jump.
+ * The bubble's own width_/height_ are the animation source; the comment's
+ * logical width_/height_ keep tracking the maximized size untouched.
+ * A monotonically increasing token cancels a stale tween when the user
+ * toggles twice quickly.
+ * @param {number} toWidth Target bubble width.
+ * @param {number} toHeight Target bubble height.
+ * @private
+ */
+Blockly.ScratchBlockComment.prototype.animateBubbleSize_ = function(
+    toWidth, toHeight) {
+  var self = this;
+  var bubble = this.bubble_;
+  if (!bubble) {
+    return;
+  }
+  if (window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    bubble.setBubbleSize(toWidth, toHeight);
+    return;
+  }
+  var fromWidth = bubble.width_;
+  var fromHeight = bubble.height_;
+  if (fromWidth == toWidth && fromHeight == toHeight) {
+    return;
+  }
+  var token = (this.minimizeAnimId_ = (this.minimizeAnimId_ || 0) + 1);
+  var start = null;
+  var DURATION = 200;
+  var step = function(ts) {
+    // Superseded by another toggle, or the comment was disposed.
+    if (self.minimizeAnimId_ !== token || !self.bubble_) {
+      return;
+    }
+    if (start === null) {
+      start = ts;
+    }
+    var t = Math.min(1, (ts - start) / DURATION);
+    var eased = 1 - Math.pow(1 - t, 3);
+    self.bubble_.setBubbleSize(
+        fromWidth + (toWidth - fromWidth) * eased,
+        fromHeight + (toHeight - fromHeight) * eased);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      self.bubble_.setBubbleSize(toWidth, toHeight);
+    }
+  };
+  requestAnimationFrame(step);
 };
 
 /**

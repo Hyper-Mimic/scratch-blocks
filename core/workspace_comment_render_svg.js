@@ -531,23 +531,29 @@ Blockly.WorkspaceCommentSvg.prototype.resizeMouseMove_ = function(e) {
  * Resize the text area accordingly.
  * @private
  */
-Blockly.WorkspaceCommentSvg.prototype.resizeComment_ = function() {
+Blockly.WorkspaceCommentSvg.prototype.resizeComment_ = function(
+    opt_width, opt_height) {
   var doubleBorderWidth = 2 * Blockly.WorkspaceCommentSvg.BORDER_WIDTH;
   var topOffset = Blockly.WorkspaceCommentSvg.TOP_BAR_HEIGHT;
   var textOffset = Blockly.WorkspaceCommentSvg.TEXTAREA_OFFSET * 2;
+  // Explicit dims let the collapse/expand animation drive the editor with the
+  // intermediate sizes; without them the logical (target) size is used, which
+  // is what the resize handle and setSize have always meant.
+  var width = typeof opt_width == 'number' ? opt_width : this.width_;
+  var height = typeof opt_height == 'number' ? opt_height : this.height_;
 
   this.foreignObject_.setAttribute('width',
-      this.width_ - doubleBorderWidth);
+      width - doubleBorderWidth);
   this.foreignObject_.setAttribute('height',
-      this.height_ - doubleBorderWidth - topOffset);
+      height - doubleBorderWidth - topOffset);
   if (this.RTL) {
     this.foreignObject_.setAttribute('x',
-        -this.width_);
+        -width);
   }
   this.textarea_.style.width =
-      (this.width_ - textOffset) + 'px';
+      (width - textOffset) + 'px';
   this.textarea_.style.height =
-      (this.height_ - doubleBorderWidth - textOffset - topOffset) + 'px';
+      (height - doubleBorderWidth - textOffset - topOffset) + 'px';
 };
 
 /**
@@ -583,6 +589,21 @@ Blockly.WorkspaceCommentSvg.prototype.setSize = function(width, height) {
         {width: oldWidth, height: oldHeight},
         {width: this.width_, height: this.height_}));
   }
+  this.applySize_(width, height);
+};
+
+/**
+ * Apply rendered geometry for the given size -- everything setSize does to
+ * the DOM, without touching the logical width_/height_ or firing events.
+ * The collapse/expand animation calls this per frame so intermediate frames
+ * neither flood CommentChange events nor overwrite the maximized size the
+ * comment must remember while minimized.
+ * @param {number} width Rendered width, in workspace units.
+ * @param {number} height Rendered height, in workspace units.
+ * @private
+ */
+Blockly.WorkspaceCommentSvg.prototype.applySize_ = function(width, height) {
+  this.workspace.invalidateContentBounds_(this);
   this.svgRect_.setAttribute('width', width);
   this.svgRect_.setAttribute('height', height);
   this.svgHandleTarget_.setAttribute('width', width);
@@ -607,6 +628,7 @@ Blockly.WorkspaceCommentSvg.prototype.setSize = function(width, height) {
 
   var resizeSize = Blockly.WorkspaceCommentSvg.RESIZE_SIZE;
   if (this.resizeGroup_) {
+    var doubleBorderWidth = 2 * Blockly.WorkspaceCommentSvg.BORDER_WIDTH;
     if (this.RTL) {
       // Mirror the resize group.
       this.resizeGroup_.setAttribute('transform', 'translate(' +
@@ -624,8 +646,57 @@ Blockly.WorkspaceCommentSvg.prototype.setSize = function(width, height) {
     this.topBarLabel_.setAttribute('y', height / 2);
   }
 
-  // Allow the contents to resize.
-  this.resizeComment_();
+  // Allow the contents to resize with the drawn frame, not the logical size.
+  this.resizeComment_(width, height);
+};
+
+/**
+ * Tween the rendered size of the comment from its current size to the target
+ * with an ease-out curve, so minimize/restore reads as motion instead of a
+ * jump. Only rendered geometry moves: no CommentChange events per frame and
+ * no writes to the logical width_/height_. Falls back to setSize when the
+ * comment is not rendered or the user prefers reduced motion.
+ * @param {number} toWidth Target rendered width.
+ * @param {number} toHeight Target rendered height.
+ * @private
+ */
+Blockly.WorkspaceCommentSvg.prototype.animateSize_ = function(
+    toWidth, toHeight) {
+  var self = this;
+  if (!this.svgRect_ ||
+      (window.matchMedia &&
+       window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    this.setSize(toWidth, toHeight);
+    return;
+  }
+  var fromWidth = parseInt(this.svgRect_.getAttribute('width'), 10);
+  var fromHeight = parseInt(this.svgRect_.getAttribute('height'), 10);
+  if (fromWidth == toWidth && fromHeight == toHeight) {
+    return;
+  }
+  var token = (this.sizeAnimId_ = (this.sizeAnimId_ || 0) + 1);
+  var start = null;
+  var DURATION = 200;
+  var step = function(ts) {
+    // Superseded by another toggle, or the comment was disposed.
+    if (self.sizeAnimId_ !== token || !self.svgRect_) {
+      return;
+    }
+    if (start === null) {
+      start = ts;
+    }
+    var t = Math.min(1, (ts - start) / DURATION);
+    var eased = 1 - Math.pow(1 - t, 3);
+    self.applySize_(
+        fromWidth + (toWidth - fromWidth) * eased,
+        fromHeight + (toHeight - fromHeight) * eased);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      self.applySize_(toWidth, toHeight);
+    }
+  };
+  requestAnimationFrame(step);
 };
 
 /**
@@ -653,14 +724,19 @@ Blockly.WorkspaceComment.prototype.setMinimized = function(minimize) {
     if (this.rendered_) {
       this.setRenderedMinimizeState_(true, this.getLabelText());
     }
-    this.setSize(Blockly.WorkspaceCommentSvg.MINIMIZE_WIDTH,
+    // Tween the bubble down to the title bar. animateSize_ touches only the
+    // rendered geometry: width_/height_ keep tracking the maximized size.
+    // Note we are not updating this.width_ or this.height_ here
+    // because we want to keep track of the width/height of the
+    // maximized comment
+    this.animateSize_(Blockly.WorkspaceCommentSvg.MINIMIZE_WIDTH,
         Blockly.WorkspaceCommentSvg.TOP_BAR_HEIGHT);
   } else {
     if (this.rendered_) {
       this.setRenderedMinimizeState_(false);
     }
     this.setText(this.content_);
-    this.setSize(this.width_, this.height_);
+    this.animateSize_(this.width_, this.height_);
   }
 };
 
