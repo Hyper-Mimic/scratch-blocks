@@ -306,7 +306,7 @@ Blockly.ScratchMsgs.locales["ab"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["af"] =
@@ -608,7 +608,7 @@ Blockly.ScratchMsgs.locales["af"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ar"] =
@@ -910,7 +910,7 @@ Blockly.ScratchMsgs.locales["ar"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["am"] =
@@ -1212,7 +1212,7 @@ Blockly.ScratchMsgs.locales["am"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["an"] =
@@ -1514,7 +1514,7 @@ Blockly.ScratchMsgs.locales["an"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ast"] =
@@ -1816,7 +1816,7 @@ Blockly.ScratchMsgs.locales["ast"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["az"] =
@@ -2118,7 +2118,7 @@ Blockly.ScratchMsgs.locales["az"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["id"] =
@@ -2420,7 +2420,7 @@ Blockly.ScratchMsgs.locales["id"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["bn"] =
@@ -2722,7 +2722,7 @@ Blockly.ScratchMsgs.locales["bn"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["be"] =
@@ -3024,7 +3024,7 @@ Blockly.ScratchMsgs.locales["be"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["bg"] =
@@ -3326,7 +3326,7 @@ Blockly.ScratchMsgs.locales["bg"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ca"] =
@@ -3628,7 +3628,7 @@ Blockly.ScratchMsgs.locales["ca"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["cs"] =
@@ -3930,7 +3930,7 @@ Blockly.ScratchMsgs.locales["cs"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["cy"] =
@@ -4232,7 +4232,7 @@ Blockly.ScratchMsgs.locales["cy"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["da"] =
@@ -4534,7 +4534,7 @@ Blockly.ScratchMsgs.locales["da"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["de"] =
@@ -4836,7 +4836,7 @@ Blockly.ScratchMsgs.locales["de"] =
     "CREATE_FRAME_FROM_SELECTION": "Auswahl als Rahmen erstellen",
     "CLEAN_UP_FRAME": "Blöcke im Rahmen ordnen",
     "FIT_FRAME_TO_CONTENT": "An Inhalt anpassen",
-    "DELETE_FRAME_BLOCKS": "Blöcke im Rahmen löschen"
+    "DELETE_FRAME_BLOCKS": "%1 Blöcke im Rahmen löschen"
 };
 
 Blockly.ScratchMsgs.locales["et"] =
@@ -5138,7 +5138,7 @@ Blockly.ScratchMsgs.locales["et"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["el"] =
@@ -5440,7 +5440,7 @@ Blockly.ScratchMsgs.locales["el"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["en"] =
@@ -5742,7 +5742,7 @@ Blockly.ScratchMsgs.locales["en"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["es"] =
@@ -6044,7 +6044,7 @@ Blockly.ScratchMsgs.locales["es"] =
     "CREATE_FRAME_FROM_SELECTION": "Crear marco desde la selección",
     "CLEAN_UP_FRAME": "Ordenar bloques del marco",
     "FIT_FRAME_TO_CONTENT": "Ajustar al contenido",
-    "DELETE_FRAME_BLOCKS": "Eliminar bloques del marco"
+    "DELETE_FRAME_BLOCKS": "Eliminar %1 bloques del marco"
 };
 
 Blockly.ScratchMsgs.locales["es-419"] =
@@ -6346,7 +6346,7 @@ Blockly.ScratchMsgs.locales["es-419"] =
     "CREATE_FRAME_FROM_SELECTION": "Crear marco desde la selección",
     "CLEAN_UP_FRAME": "Ordenar bloques del marco",
     "FIT_FRAME_TO_CONTENT": "Ajustar al contenido",
-    "DELETE_FRAME_BLOCKS": "Eliminar bloques del marco"
+    "DELETE_FRAME_BLOCKS": "Eliminar %1 bloques del marco"
 };
 
 Blockly.ScratchMsgs.locales["eo"] =
@@ -6648,7 +6648,7 @@ Blockly.ScratchMsgs.locales["eo"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["eu"] =
@@ -6950,7 +6950,7 @@ Blockly.ScratchMsgs.locales["eu"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fa"] =
@@ -7252,7 +7252,7 @@ Blockly.ScratchMsgs.locales["fa"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fil"] =
@@ -7554,7 +7554,7 @@ Blockly.ScratchMsgs.locales["fil"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fr"] =
@@ -7856,7 +7856,7 @@ Blockly.ScratchMsgs.locales["fr"] =
     "CREATE_FRAME_FROM_SELECTION": "Créer un cadre à partir de la sélection",
     "CLEAN_UP_FRAME": "Ranger les blocs du cadre",
     "FIT_FRAME_TO_CONTENT": "Ajuster au contenu",
-    "DELETE_FRAME_BLOCKS": "Supprimer les blocs du cadre"
+    "DELETE_FRAME_BLOCKS": "Supprimer %1 blocs du cadre"
 };
 
 Blockly.ScratchMsgs.locales["fy"] =
@@ -8158,7 +8158,7 @@ Blockly.ScratchMsgs.locales["fy"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ga"] =
@@ -8460,7 +8460,7 @@ Blockly.ScratchMsgs.locales["ga"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["gd"] =
@@ -8762,7 +8762,7 @@ Blockly.ScratchMsgs.locales["gd"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["gl"] =
@@ -9064,7 +9064,7 @@ Blockly.ScratchMsgs.locales["gl"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ko"] =
@@ -9366,7 +9366,7 @@ Blockly.ScratchMsgs.locales["ko"] =
     "CREATE_FRAME_FROM_SELECTION": "선택 영역을 프레임으로 만들기",
     "CLEAN_UP_FRAME": "프레임 안 블록 정리",
     "FIT_FRAME_TO_CONTENT": "내용에 맞추기",
-    "DELETE_FRAME_BLOCKS": "안의 블록 삭제"
+    "DELETE_FRAME_BLOCKS": "안의 블록 %1개 삭제"
 };
 
 Blockly.ScratchMsgs.locales["ha"] =
@@ -9668,7 +9668,7 @@ Blockly.ScratchMsgs.locales["ha"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hy"] =
@@ -9970,7 +9970,7 @@ Blockly.ScratchMsgs.locales["hy"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["he"] =
@@ -10272,7 +10272,7 @@ Blockly.ScratchMsgs.locales["he"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hi"] =
@@ -10574,7 +10574,7 @@ Blockly.ScratchMsgs.locales["hi"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hr"] =
@@ -10876,7 +10876,7 @@ Blockly.ScratchMsgs.locales["hr"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["xh"] =
@@ -11178,7 +11178,7 @@ Blockly.ScratchMsgs.locales["xh"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["zu"] =
@@ -11480,7 +11480,7 @@ Blockly.ScratchMsgs.locales["zu"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["is"] =
@@ -11782,7 +11782,7 @@ Blockly.ScratchMsgs.locales["is"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["it"] =
@@ -12084,7 +12084,7 @@ Blockly.ScratchMsgs.locales["it"] =
     "CREATE_FRAME_FROM_SELECTION": "Crea riquadro dalla selezione",
     "CLEAN_UP_FRAME": "Ordina i blocchi nel riquadro",
     "FIT_FRAME_TO_CONTENT": "Adatta al contenuto",
-    "DELETE_FRAME_BLOCKS": "Elimina i blocchi nel riquadro"
+    "DELETE_FRAME_BLOCKS": "Elimina %1 blocchi nel riquadro"
 };
 
 Blockly.ScratchMsgs.locales["ka"] =
@@ -12386,7 +12386,7 @@ Blockly.ScratchMsgs.locales["ka"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["kk"] =
@@ -12688,7 +12688,7 @@ Blockly.ScratchMsgs.locales["kk"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["qu"] =
@@ -12990,7 +12990,7 @@ Blockly.ScratchMsgs.locales["qu"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sw"] =
@@ -13292,7 +13292,7 @@ Blockly.ScratchMsgs.locales["sw"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ht"] =
@@ -13594,7 +13594,7 @@ Blockly.ScratchMsgs.locales["ht"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ku"] =
@@ -13896,7 +13896,7 @@ Blockly.ScratchMsgs.locales["ku"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ckb"] =
@@ -14198,7 +14198,7 @@ Blockly.ScratchMsgs.locales["ckb"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["lv"] =
@@ -14500,7 +14500,7 @@ Blockly.ScratchMsgs.locales["lv"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["lt"] =
@@ -14802,7 +14802,7 @@ Blockly.ScratchMsgs.locales["lt"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["hu"] =
@@ -15104,7 +15104,7 @@ Blockly.ScratchMsgs.locales["hu"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["mi"] =
@@ -15406,7 +15406,7 @@ Blockly.ScratchMsgs.locales["mi"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["mn"] =
@@ -15708,7 +15708,7 @@ Blockly.ScratchMsgs.locales["mn"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["nl"] =
@@ -16010,7 +16010,7 @@ Blockly.ScratchMsgs.locales["nl"] =
     "CREATE_FRAME_FROM_SELECTION": "Kader maken van selectie",
     "CLEAN_UP_FRAME": "Blokken in kader ordenen",
     "FIT_FRAME_TO_CONTENT": "Aanpassen aan inhoud",
-    "DELETE_FRAME_BLOCKS": "Blokken in kader verwijderen"
+    "DELETE_FRAME_BLOCKS": "Verwijder %1 blokken in kader"
 };
 
 Blockly.ScratchMsgs.locales["ja"] =
@@ -16312,7 +16312,7 @@ Blockly.ScratchMsgs.locales["ja"] =
     "CREATE_FRAME_FROM_SELECTION": "選択範囲をフレームにする",
     "CLEAN_UP_FRAME": "フレーム内のブロックを整理",
     "FIT_FRAME_TO_CONTENT": "内容に合わせる",
-    "DELETE_FRAME_BLOCKS": "中のブロックを削除"
+    "DELETE_FRAME_BLOCKS": "中の%1個のブロックを削除"
 };
 
 Blockly.ScratchMsgs.locales["ja-Hira"] =
@@ -16614,7 +16614,7 @@ Blockly.ScratchMsgs.locales["ja-Hira"] =
     "CREATE_FRAME_FROM_SELECTION": "せんたくはんいをふれーむにする",
     "CLEAN_UP_FRAME": "ふれーむないのぶろっくをせいり",
     "FIT_FRAME_TO_CONTENT": "ないようにあわせる",
-    "DELETE_FRAME_BLOCKS": "なかのぶろっくをさくじょ"
+    "DELETE_FRAME_BLOCKS": "なかの%1個のぶろっくをさくじょ"
 };
 
 Blockly.ScratchMsgs.locales["nb"] =
@@ -16916,7 +16916,7 @@ Blockly.ScratchMsgs.locales["nb"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["nn"] =
@@ -17218,7 +17218,7 @@ Blockly.ScratchMsgs.locales["nn"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["oc"] =
@@ -17520,7 +17520,7 @@ Blockly.ScratchMsgs.locales["oc"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["or"] =
@@ -17822,7 +17822,7 @@ Blockly.ScratchMsgs.locales["or"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["uz"] =
@@ -18124,7 +18124,7 @@ Blockly.ScratchMsgs.locales["uz"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["th"] =
@@ -18426,7 +18426,7 @@ Blockly.ScratchMsgs.locales["th"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["km"] =
@@ -18728,7 +18728,7 @@ Blockly.ScratchMsgs.locales["km"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["pl"] =
@@ -19030,7 +19030,7 @@ Blockly.ScratchMsgs.locales["pl"] =
     "CREATE_FRAME_FROM_SELECTION": "Utwórz ramkę z zaznaczenia",
     "CLEAN_UP_FRAME": "Uporządkuj bloki w ramce",
     "FIT_FRAME_TO_CONTENT": "Dopasuj do zawartości",
-    "DELETE_FRAME_BLOCKS": "Usuń bloki w ramce"
+    "DELETE_FRAME_BLOCKS": "Usuń %1 bloki w ramce"
 };
 
 Blockly.ScratchMsgs.locales["pt"] =
@@ -19332,7 +19332,7 @@ Blockly.ScratchMsgs.locales["pt"] =
     "CREATE_FRAME_FROM_SELECTION": "Criar quadro a partir da seleção",
     "CLEAN_UP_FRAME": "Organizar blocos do quadro",
     "FIT_FRAME_TO_CONTENT": "Ajustar ao conteúdo",
-    "DELETE_FRAME_BLOCKS": "Excluir blocos do quadro"
+    "DELETE_FRAME_BLOCKS": "Excluir %1 blocos do quadro"
 };
 
 Blockly.ScratchMsgs.locales["pt-br"] =
@@ -19634,7 +19634,7 @@ Blockly.ScratchMsgs.locales["pt-br"] =
     "CREATE_FRAME_FROM_SELECTION": "Criar quadro a partir da seleção",
     "CLEAN_UP_FRAME": "Organizar blocos do quadro",
     "FIT_FRAME_TO_CONTENT": "Ajustar ao conteúdo",
-    "DELETE_FRAME_BLOCKS": "Excluir blocos do quadro"
+    "DELETE_FRAME_BLOCKS": "Excluir %1 blocos do quadro"
 };
 
 Blockly.ScratchMsgs.locales["rap"] =
@@ -19936,7 +19936,7 @@ Blockly.ScratchMsgs.locales["rap"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ro"] =
@@ -20238,7 +20238,7 @@ Blockly.ScratchMsgs.locales["ro"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["ru"] =
@@ -20540,7 +20540,7 @@ Blockly.ScratchMsgs.locales["ru"] =
     "CREATE_FRAME_FROM_SELECTION": "Создать рамку из выделения",
     "CLEAN_UP_FRAME": "Упорядочить блоки в рамке",
     "FIT_FRAME_TO_CONTENT": "Подогнать под содержимое",
-    "DELETE_FRAME_BLOCKS": "Удалить блоки в рамке"
+    "DELETE_FRAME_BLOCKS": "Удалить %1 блоков в рамке"
 };
 
 Blockly.ScratchMsgs.locales["nso"] =
@@ -20842,7 +20842,7 @@ Blockly.ScratchMsgs.locales["nso"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["tn"] =
@@ -21144,7 +21144,7 @@ Blockly.ScratchMsgs.locales["tn"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sk"] =
@@ -21446,7 +21446,7 @@ Blockly.ScratchMsgs.locales["sk"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sl"] =
@@ -21748,7 +21748,7 @@ Blockly.ScratchMsgs.locales["sl"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sr"] =
@@ -22050,7 +22050,7 @@ Blockly.ScratchMsgs.locales["sr"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["fi"] =
@@ -22352,7 +22352,7 @@ Blockly.ScratchMsgs.locales["fi"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["sv"] =
@@ -22654,7 +22654,7 @@ Blockly.ScratchMsgs.locales["sv"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["vi"] =
@@ -22956,7 +22956,7 @@ Blockly.ScratchMsgs.locales["vi"] =
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 };
 
 Blockly.ScratchMsgs.locales["tr"] =
@@ -23258,7 +23258,7 @@ Blockly.ScratchMsgs.locales["tr"] =
     "CREATE_FRAME_FROM_SELECTION": "Seçimden çerçeve oluştur",
     "CLEAN_UP_FRAME": "Çerçevedeki blokları düzenle",
     "FIT_FRAME_TO_CONTENT": "İçeriğe sığdır",
-    "DELETE_FRAME_BLOCKS": "Çerçevedeki blokları sil"
+    "DELETE_FRAME_BLOCKS": "Çerçevedeki %1 bloğu sil"
 };
 
 Blockly.ScratchMsgs.locales["uk"] =
@@ -23560,7 +23560,7 @@ Blockly.ScratchMsgs.locales["uk"] =
     "CREATE_FRAME_FROM_SELECTION": "Створити рамку з виділення",
     "CLEAN_UP_FRAME": "Впорядкувати блоки в рамці",
     "FIT_FRAME_TO_CONTENT": "Підігнати під вміст",
-    "DELETE_FRAME_BLOCKS": "Видалити блоки в рамці"
+    "DELETE_FRAME_BLOCKS": "Видалити %1 блоки в рамці"
 };
 
 Blockly.ScratchMsgs.locales["zh-cn"] =
@@ -23862,7 +23862,7 @@ Blockly.ScratchMsgs.locales["zh-cn"] =
     "CREATE_FRAME_FROM_SELECTION": "创建为代码框",
     "CLEAN_UP_FRAME": "整理框内积木",
     "FIT_FRAME_TO_CONTENT": "贴合内容",
-    "DELETE_FRAME_BLOCKS": "删除内部积木"
+    "DELETE_FRAME_BLOCKS": "删除内部 %1 块积木"
 };
 
 Blockly.ScratchMsgs.locales["zh-tw"] =
@@ -24164,6 +24164,6 @@ Blockly.ScratchMsgs.locales["zh-tw"] =
     "CREATE_FRAME_FROM_SELECTION": "建立為程式框",
     "CLEAN_UP_FRAME": "整理框內積木",
     "FIT_FRAME_TO_CONTENT": "貼合內容",
-    "DELETE_FRAME_BLOCKS": "刪除內部積木"
+    "DELETE_FRAME_BLOCKS": "刪除內部 %1 塊積木"
 };
 // End of combined translations

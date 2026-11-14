@@ -1563,7 +1563,15 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
     return;
   }
 
-  var hasBlocks = frame.getMembers().length > 0;
+  // Count like the workspace's own "Delete X Blocks" option: every real
+  // (non-shadow) block that would go away, i.e. each contained top block plus
+  // all of its descendants.
+  var members = frame.getMembers();
+  var memberCount = 0;
+  for (var i = 0; i < members.length; i++) {
+    memberCount += members[i].getDescendants(false, true).length;
+  }
+  var hasBlocks = memberCount > 0;
 
   // Group 1: the frame's own appearance and view state.
   options.push({
@@ -1615,7 +1623,7 @@ Blockly.Frame.prototype.showContextMenu_ = function(e) {
   });
 
   options.push({
-    text: Blockly.Msg.DELETE_FRAME_BLOCKS,
+    text: Blockly.Msg.DELETE_FRAME_BLOCKS.replace('%1', String(memberCount)),
     enabled: hasBlocks,
     callback: function() {
       frame.deleteBlocks();

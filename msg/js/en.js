@@ -302,4 +302,4 @@ Blockly.Msg["UNLOCK_FRAME"] = "Unlock Frame";
 Blockly.Msg["CREATE_FRAME_FROM_SELECTION"] = "Create Frame from Selection";
 Blockly.Msg["CLEAN_UP_FRAME"] = "Clean Up Blocks in Frame";
 Blockly.Msg["FIT_FRAME_TO_CONTENT"] = "Fit Frame to Content";
-Blockly.Msg["DELETE_FRAME_BLOCKS"] = "Delete Blocks in Frame";
+Blockly.Msg["DELETE_FRAME_BLOCKS"] = "Delete %1 Blocks in Frame";

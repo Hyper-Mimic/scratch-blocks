@@ -296,5 +296,5 @@
     "CREATE_FRAME_FROM_SELECTION": "Create Frame from Selection",
     "CLEAN_UP_FRAME": "Clean Up Blocks in Frame",
     "FIT_FRAME_TO_CONTENT": "Fit Frame to Content",
-    "DELETE_FRAME_BLOCKS": "Delete Blocks in Frame"
+    "DELETE_FRAME_BLOCKS": "Delete %1 Blocks in Frame"
 }
