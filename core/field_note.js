@@ -474,8 +474,9 @@ Blockly.FieldNote.prototype.showEditor_ = function() {
       Blockly.bindEvent_(this.octaveUpButton, 'mousedown', this,function() {
         this.changeOctaveBy_(1);
       });
+  // PATCH 28
   Blockly.DropDownDiv.setColour(this.sourceBlock_.parentBlock_.getColour(),
-      this.sourceBlock_.getColourTertiary());
+      this.getEditorStrokeColour_());
   Blockly.DropDownDiv.setCategory(this.sourceBlock_.parentBlock_.getCategory());
   Blockly.DropDownDiv.showPositionedByBlock(this, this.sourceBlock_);
 

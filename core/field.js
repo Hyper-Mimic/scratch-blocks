@@ -814,3 +814,24 @@ Blockly.Field.prototype.getAbsoluteXY_ = function() {
 Blockly.Field.prototype.referencesVariables = function() {
   return false;
 };
+
+/**
+ * Stroke colour for a field's pop-up editor (WidgetDiv / DropDownDiv / numpad).
+ * PATCH 28 (2026-11-14): updateColour() strokes a shadow input with its
+ * parent's tertiary colour, but BlockSvg.setParent copies that value into the
+ * shadow exactly once. Recolouring the parent afterwards (addon blocks via
+ * api.js' updateColour hook, recolor-custom-blocks, ...) leaves the shadow
+ * stale, so the pop-up kept the old My Blocks red while the canvas showed the
+ * new colour. Read from the same source as the SVG instead.
+ * @return {string} CSS colour.
+ * @private
+ */
+Blockly.Field.prototype.getEditorStrokeColour_ = function() {
+  var block = this.sourceBlock_;
+  if (block.isShadow() && block.parentBlock_ &&
+      !Blockly.scratchBlocksUtils.isShadowArgumentReporter(block)) {
+    return block.parentBlock_.getColourTertiary();
+  }
+  return block.getColourTertiary();
+};
+

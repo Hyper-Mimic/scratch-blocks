@@ -340,8 +340,9 @@ Blockly.FieldMatrix.prototype.showEditor_ = function() {
   buttonDiv.appendChild(fillButtonDiv);
   div.appendChild(buttonDiv);
 
+  // PATCH 28
   Blockly.DropDownDiv.setColour(this.sourceBlock_.getColour(),
-      this.sourceBlock_.getColourTertiary());
+      this.getEditorStrokeColour_());
   Blockly.DropDownDiv.setCategory(this.sourceBlock_.getCategory());
   Blockly.DropDownDiv.showPositionedByBlock(this, this.sourceBlock_);
 

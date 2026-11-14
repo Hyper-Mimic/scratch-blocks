@@ -223,7 +223,8 @@ Blockly.FieldDropdown.prototype.showEditor_ = function() {
   var primaryColour = (this.sourceBlock_.isShadow()) ?
     this.sourceBlock_.parentBlock_.getColour() : this.sourceBlock_.getColour();
 
-  Blockly.DropDownDiv.setColour(primaryColour, this.sourceBlock_.getColourTertiary());
+  // PATCH 28: keep the drop-down border in sync with the shadow's on-canvas outline.
+  Blockly.DropDownDiv.setColour(primaryColour, this.getEditorStrokeColour_());
 
   var category = (this.sourceBlock_.isShadow()) ?
     this.sourceBlock_.parentBlock_.getCategory() : this.sourceBlock_.getCategory();

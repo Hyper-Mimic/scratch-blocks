@@ -193,8 +193,9 @@ Blockly.FieldNumber.prototype.showNumPad_ = function() {
   this.addButtons_(contentDiv);
 
   // Set colour and size of drop-down
+  // PATCH 28: numpad border follows the parent, like the buttons below.
   Blockly.DropDownDiv.setColour(this.sourceBlock_.parentBlock_.getColour(),
-      this.sourceBlock_.getColourTertiary());
+      this.getEditorStrokeColour_());
   contentDiv.style.width = Blockly.FieldNumber.DROPDOWN_WIDTH + 'px';
 
   this.position_();

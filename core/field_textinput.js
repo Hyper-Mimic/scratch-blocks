@@ -517,8 +517,9 @@ Blockly.FieldTextInput.prototype.resizeEditor_ = function() {
   var borderRadius = this.getBorderRadius() + 0.5;
   div.style.borderRadius = borderRadius + 'px';
   Blockly.FieldTextInput.htmlInput_.style.borderRadius = borderRadius + 'px';
-  // Pull stroke colour from the existing shadow block
-  var strokeColour = this.sourceBlock_.getColourTertiary();
+  // PATCH 28: match the canvas outline, which updateColour() draws from the
+  // parent's tertiary for shadow inputs (the shadow's own copy can be stale).
+  var strokeColour = this.getEditorStrokeColour_();
   div.style.borderColor = strokeColour;
 
   var xy = this.getAbsoluteXY_();

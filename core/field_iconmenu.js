@@ -217,7 +217,8 @@ Blockly.FieldIconMenu.prototype.showEditor_ = function() {
       button.setAttribute('aria-selected', 'true');
     }
     button.style.backgroundColor = backgroundColor;
-    button.style.borderColor = this.sourceBlock_.getColourTertiary();
+    // PATCH 28
+    button.style.borderColor = this.getEditorStrokeColour_();
     Blockly.bindEvent_(button, 'click', this, this.buttonClick_);
     Blockly.bindEvent_(button, 'mouseup', this, this.buttonClick_);
     // These are applied manually instead of using the :hover pseudoclass
@@ -247,7 +248,8 @@ Blockly.FieldIconMenu.prototype.showEditor_ = function() {
   }
   contentDiv.style.width = Blockly.FieldIconMenu.DROPDOWN_WIDTH + 'px';
 
-  Blockly.DropDownDiv.setColour(this.sourceBlock_.getColour(), this.sourceBlock_.getColourTertiary());
+  // PATCH 28
+  Blockly.DropDownDiv.setColour(this.sourceBlock_.getColour(), this.getEditorStrokeColour_());
   Blockly.DropDownDiv.setCategory(this.sourceBlock_.parentBlock_.getCategory());
 
   // Update source block colour to look selected
