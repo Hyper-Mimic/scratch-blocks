@@ -109,7 +109,9 @@ Blockly.WidgetDiv.createDom = function() {
  */
 Blockly.WidgetDiv.show = function(newOwner, rtl, opt_dispose,
     opt_disposeAnimationFinished, opt_disposeAnimationTimerLength) {
-  Blockly.WidgetDiv.hide();
+  // Force-clear: the div is about to host new content, so a widget still
+  // fading out must be removed immediately, not after its animation timer.
+  Blockly.WidgetDiv.hide(true);
   Blockly.WidgetDiv.owner_ = newOwner;
   Blockly.WidgetDiv.dispose_ = opt_dispose;
   Blockly.WidgetDiv.disposeAnimationFinished_ = opt_disposeAnimationFinished;
@@ -149,10 +151,16 @@ Blockly.WidgetDiv.repositionForWindowResize = function() {
  */
 Blockly.WidgetDiv.hide = function(opt_noAnimate) {
   if (Blockly.WidgetDiv.disposeAnimationTimer_) {
-    // An animation timer is set already.
-    // This happens when a previous widget was animating out,
-    // but Blockly is hiding the widget to create a new one.
-    // So, short-circuit the animation and clear the timer.
+    // An animation timer is set already, so the widget is already fading out.
+    // A plain hide() (e.g. hideChaff right after a menu-item click) must NOT
+    // short-circuit the running fade - that is exactly what used to make the
+    // context menu vanish instantly when duplicating a block: the fake-drag
+    // gesture called hideChaff milliseconds after the fade had started.
+    // Only a caller that explicitly cannot wait (opt_noAnimate, or show()
+    // needing a clean container) clears immediately.
+    if (!opt_noAnimate) {
+      return;
+    }
     window.clearTimeout(Blockly.WidgetDiv.disposeAnimationTimer_);
     Blockly.WidgetDiv.disposeAnimationFinished_ && Blockly.WidgetDiv.disposeAnimationFinished_();
     Blockly.WidgetDiv.disposeAnimationFinished_ = null;
@@ -167,7 +175,8 @@ Blockly.WidgetDiv.hide = function(opt_noAnimate) {
     // If we want to animate out, set the appropriate timer for final dispose.
     if (Blockly.WidgetDiv.disposeAnimationFinished_ && !opt_noAnimate) {
       Blockly.WidgetDiv.disposeAnimationTimer_ = window.setTimeout(
-          Blockly.WidgetDiv.hide, // Come back to hide and take the first branch.
+          // Come back to finish: force-clear via the timer branch (noAnimate).
+          function() { Blockly.WidgetDiv.hide(true); },
           Blockly.WidgetDiv.disposeAnimationTimerLength_ * 1000
       );
     } else {
