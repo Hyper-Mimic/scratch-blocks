@@ -945,6 +945,17 @@ Blockly.Css.CONTENT = [
   '.blocklyContextMenu {',
     'border-radius: 10px;',
     'max-height: 100%;',
+    /* All opacity values are set inline (react-contextmenu recipe): the menu
+       is inserted at 0, revealed at 1 after a reflow, and faded back to 0 by
+       the WidgetDiv dispose hook. This line only interpolates those jumps.
+       Keep in sync with Blockly.ContextMenu.ANIMATION_TIME. */
+    'transition: opacity 0.2s ease;',
+  '}',
+
+  '@media (prefers-reduced-motion: reduce) {',
+    '.blocklyContextMenu {',
+      'transition: none;',
+    '}',
   '}',
 
   '.blocklyDropdownMenu {',

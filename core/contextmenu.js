@@ -67,6 +67,56 @@ Blockly.ContextMenu.currentOwner = null;
 Blockly.ContextMenu.pendingOwner_ = null;
 
 /**
+ * Length of the fade in/out, in seconds. Matches the CSS transition on
+ * .blocklyContextMenu; keep the two in sync. The GUI's react-contextmenu
+ * uses the same value.
+ * @type {number}
+ * @const
+ */
+Blockly.ContextMenu.ANIMATION_TIME = 0.2;
+
+/**
+ * The currently rendered menu element, kept so the fade-out hook can reach it
+ * after the menu object itself is out of scope.
+ * @type {?Element}
+ * @private
+ */
+Blockly.ContextMenu.menuElement_ = null;
+
+/**
+ * Token of the scheduled fade-in reveal. A non-null value that no longer
+ * matches the captured token cancels the reveal (menu hidden or replaced).
+ * @type {?Object}
+ * @private
+ */
+Blockly.ContextMenu.revealToken_ = null;
+
+/**
+ * Run the callback after the current style pass has painted, via rAF when
+ * available - the same wrapper react-contextmenu uses for its fade-in.
+ * @param {function()} fn Callback.
+ * @private
+ */
+Blockly.ContextMenu.deferToNextFrame_ = function(fn) {
+  (window.requestAnimationFrame || window.setTimeout)(fn);
+};
+
+/**
+ * Start the fade-out. Registered as the WidgetDiv dispose hook in show();
+ * WidgetDiv.hide() runs it, waits ANIMATION_TIME, then clears the DOM.
+ * @private
+ */
+Blockly.ContextMenu.startFadeOut_ = function() {
+  // A pending fade-in reveal must not resurrect the fading menu.
+  Blockly.ContextMenu.revealToken_ = null;
+  if (Blockly.ContextMenu.menuElement_) {
+    Blockly.ContextMenu.menuElement_.style.opacity = 0;
+    // The fading menu must not swallow the click of whatever dismissed it.
+    Blockly.ContextMenu.menuElement_.style.pointerEvents = 'none';
+  }
+};
+
+/**
  * Opaque data that can be passed to unbindEvent_.
  * @type {Array.<!Array>}
  * @private
@@ -84,7 +134,14 @@ Blockly.ContextMenu.show = function(e, options, rtl, opt_owner) {
   var owner = opt_owner || Blockly.ContextMenu.pendingOwner_;
   Blockly.ContextMenu.pendingOwner_ = null;
   Blockly.ContextMenu.currentOwner = null;
-  Blockly.WidgetDiv.show(Blockly.ContextMenu, rtl, null);
+  // The dispose hook drives the fade-out: WidgetDiv.hide() starts it, waits
+  // ANIMATION_TIME, then clears the DOM. A new show() short-circuits the
+  // pending timer and clears immediately, so the old menu never lingers.
+  // The finished callback must be non-null: WidgetDiv only arms the timer
+  // when disposeAnimationFinished_ is set, even though it never calls ours.
+  Blockly.WidgetDiv.show(
+      Blockly.ContextMenu, rtl, Blockly.ContextMenu.startFadeOut_,
+      function() {}, Blockly.ContextMenu.ANIMATION_TIME);
   if (!options.length) {
     Blockly.ContextMenu.hide();
     return;
@@ -213,6 +270,13 @@ Blockly.ContextMenu.position_ = function(menu, e, rtl) {
 
   // https://github.com/LLK/scratch-blocks/pull/2834
   menu.setVisible(true, true, e);
+  // Reveal. The pre-insertion opacity 0 has been committed by the layout
+  // reads above (uiMenu.getSize), so flipping to 1 starts the CSS transition
+  // from a committed starting value.
+  var menuDom = menu.getElement();
+  menuDom.offsetHeight;
+  menuDom.style.opacity = 1;
+  menuDom.style.pointerEvents = '';
 };
 
 /**
@@ -222,9 +286,26 @@ Blockly.ContextMenu.position_ = function(menu, e, rtl) {
  */
 Blockly.ContextMenu.createWidget_ = function(menu) {
   var div = Blockly.WidgetDiv.DIV;
-  menu.render(div);
+  // The menu's element (items included) was built detached during populate_:
+  // the first addChild(render=true) calls createDom() on the container. Pre-
+  // style it BEFORE render() puts it in the document. Chrome starts a
+  // spurious opacity 1->0 transition when an element is inserted at its
+  // default opacity and only styled afterwards: the value committed by the
+  // first style recalc after insertion becomes the transition's start, and
+  // the fade-in reveal then just retargets that transition back to 1 - which
+  // reads as no animation at all. With opacity 0 already in the style
+  // attribute at insertion, the first recalc starts at 0 and the reveal in
+  // position_ interpolates 0->1.
   var menuDom = menu.getElement();
+  if (!menuDom) {
+    menu.createDom();
+    menuDom = menu.getElement();
+  }
   Blockly.utils.addClass(menuDom, 'blocklyContextMenu');
+  menuDom.style.opacity = 0;
+  menuDom.style.pointerEvents = 'none';
+  Blockly.ContextMenu.menuElement_ = menuDom;
+  menu.render(div);
   // Items that follow a separator() divider get the GUI's separator look:
   // the class name and the exact inline values used by addons/api.js
   // (2px gap, 1px theme-coloured line on the item's top edge).
@@ -254,6 +335,11 @@ Blockly.ContextMenu.hide = function() {
   // A builder that staged an owner but never reached show() must not leak it
   // into the next menu.
   Blockly.ContextMenu.pendingOwner_ = null;
+  // The element is fading out (or already gone); drop the stale reference so
+  // startFadeOut_ can never touch a removed menu, and cancel any pending
+  // fade-in reveal.
+  Blockly.ContextMenu.menuElement_ = null;
+  Blockly.ContextMenu.revealToken_ = null;
   if (Blockly.ContextMenu.eventWrapper_) {
     Blockly.unbindEvent_(Blockly.ContextMenu.eventWrapper_);
   }

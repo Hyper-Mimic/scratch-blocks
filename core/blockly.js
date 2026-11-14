@@ -398,7 +398,10 @@ Blockly.onContextMenu_ = function(e) {
  */
 Blockly.hideChaff = function(opt_allowToolbox) {
   Blockly.hideChaffInternal_(opt_allowToolbox);
-  Blockly.WidgetDiv.hide(true);
+  // Animated: the context menu fades out like the GUI's react-contextmenu.
+  // Widgets without dispose hooks (text input etc.) hide instantly anyway,
+  // so dropping opt_noAnimate only affects menus.
+  Blockly.WidgetDiv.hide();
 };
 
 /**
