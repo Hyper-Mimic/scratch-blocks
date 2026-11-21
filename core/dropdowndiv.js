@@ -61,6 +61,15 @@ Blockly.DropDownDiv.boundsElement_ = null;
 Blockly.DropDownDiv.owner_ = null;
 
 /**
+ * Whether the drop-down is currently in its fade-out animation. The owner is
+ * kept until the animation finishes, so isVisible() alone cannot tell a live
+ * editor from one that is already closing. (2026-11-21)
+ * @type {boolean}
+ * @private
+ */
+Blockly.DropDownDiv.isHiding_ = false;
+
+/**
  * Arrow size in px. Should match the value in CSS (need to position pre-render).
  * @type {number}
  * @const
@@ -256,6 +265,8 @@ Blockly.DropDownDiv.repositionForWindowResize = function() {
 Blockly.DropDownDiv.show = function(owner, primaryX, primaryY, secondaryX, secondaryY, opt_onHide) {
   Blockly.DropDownDiv.owner_ = owner;
   Blockly.DropDownDiv.onHide_ = opt_onHide;
+  // Reopening (e.g. clicking a reporter again) cancels any in-flight fade-out.
+  Blockly.DropDownDiv.isHiding_ = false;
   var div = Blockly.DropDownDiv.DIV_;
   // A previous drop-down may still be fading out: stop that timer before it
   // fires hideWithoutAnimation() and kills this one, and re-enable pointer
@@ -438,6 +449,10 @@ Blockly.DropDownDiv.hide = function() {
   if (!Blockly.DropDownDiv.isVisible()) {
     return;
   }
+  // Mark the box as closing. The owner stays set until the timer fires so the
+  // fade can still reposition/clear it, but callers that gate new interactions
+  // on isVisible() must treat this as "not editing". (2026-11-21)
+  Blockly.DropDownDiv.isHiding_ = true;
   // Start the animation by setting the translation and fading out.
   var div = Blockly.DropDownDiv.DIV_;
   // Reset to (initialX, initialY) - i.e., no translation.
@@ -466,6 +481,7 @@ Blockly.DropDownDiv.hideWithoutAnimation = function() {
   if (!Blockly.DropDownDiv.isVisible()) {
     return;
   }
+  Blockly.DropDownDiv.isHiding_ = false;
   var div = Blockly.DropDownDiv.DIV_;
   Blockly.DropDownDiv.animateOutTimer_ && window.clearTimeout(Blockly.DropDownDiv.animateOutTimer_);
   div.style.transform = '';

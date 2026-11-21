@@ -1783,7 +1783,11 @@ Blockly.Gesture.prototype.doBlockClick_ = function() {
     }
     // A field is being edited if either the WidgetDiv or DropDownDiv is currently open.
     // If a field is being edited, don't fire any click events.
-    var fieldEditing = Blockly.WidgetDiv.isVisible() || Blockly.DropDownDiv.isVisible();
+    // A DropDownDiv that is fading out is not an active editor: the owner is
+    // still set for the animation, so ignore it or a second click on a reporter
+    // block would be swallowed instead of reporting a fresh value. (2026-11-21)
+    var dropDownEditing = Blockly.DropDownDiv.isVisible() && !Blockly.DropDownDiv.isHiding_;
+    var fieldEditing = Blockly.WidgetDiv.isVisible() || dropDownEditing;
     if (!fieldEditing) {
       Blockly.Events.fire(
           new Blockly.Events.Ui(this.startBlock_, 'click', undefined, undefined));
